@@ -8,6 +8,18 @@ function generateManifest() {
     name: pkg.name,
     description: pkg.description,
     version: pkg.version,
+    content_scripts: [
+      {
+        matches: [
+          process.env.ENVIRONMENT === "production"
+            ? "https://fleetyards.net/*"
+            : process.env.ENVIRONMENT === "staging"
+            ? "https://fleetyards.dev/*"
+            : "http://fleetyards.test/*",
+        ],
+        js: ["src/content.ts"],
+      },
+    ],
     ...manifest,
   };
 }

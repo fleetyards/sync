@@ -5,13 +5,15 @@ set -eu
 # Chrome
 echo "Building for Chrome..."
 
-TARGET=chrome yarn build
+TARGET=chrome vite build
 
-rm fleetyards-sync.chrome.zip
+BUILD_ENV=${ENVIRONMENT:-local}
+
+rm -f fleetyards-sync-$BUILD_ENV.chrome.zip
 
 pushd dist
 
-zip -r ../fleetyards-sync.chrome.zip *
+zip -r ../fleetyards-sync-$BUILD_ENV.chrome.zip *
 
 popd
 
@@ -20,13 +22,13 @@ echo "Chrome build done!"
 # Firefox
 echo "Building for Firefox..."
 
-TARGET=firefox yarn build
+TARGET=firefox vite build
 
-rm fleetyards-sync.firefox.zip
+rm -f fleetyards-sync-$BUILD_ENV.firefox.zip
 
 pushd dist
 
-zip -r ../fleetyards-sync.firefox.zip *
+zip -r ../fleetyards-sync-$BUILD_ENV.firefox.zip *
 
 popd
 

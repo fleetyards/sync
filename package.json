@@ -3,12 +3,16 @@
   "displayName": "Fleetyards Sync",
   "description": "Browser Extension for syncing pledge data from https://robertsspaceindustries.com to https://fleetyards.net",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "compile": "tsc --noEmit",
     "dev": "vite",
-    "build": "vite build"
+    "dev:chrome": "TARGET=chrome vite build",
+    "dev:firefox": "TARGET=firefox vite build",
+    "build": "./scripts/build.sh",
+    "build:staging": "ENVIRONMENT=staging ./scripts/build.sh",
+    "build:production": "ENVIRONMENT=production ./scripts/build.sh"
   },
   "devDependencies": {
     "@types/webextension-polyfill": "^0.10.0",

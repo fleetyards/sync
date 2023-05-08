@@ -14,16 +14,5 @@
   "background": {
     "{{chrome}}.service_worker": "src/background.ts",
     "{{firefox}}.scripts": ["src/background.ts"]
-  },
-
-  "content_scripts": [
-    {
-      "matches": [
-        "https://fleetyards.net/*",
-        "http://fleetyards.test/*",
-        "https://fleetyards.dev/*"
-      ],
-      "js": ["src/content.ts"]
-    }
-  ]
+  }
 }
