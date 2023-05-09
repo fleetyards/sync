@@ -3,7 +3,7 @@
   "displayName": "Fleetyards Sync",
   "description": "Browser Extension for syncing pledge data from https://robertsspaceindustries.com to https://fleetyards.net",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "compile": "tsc --noEmit",
