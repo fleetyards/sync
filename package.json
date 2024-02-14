@@ -15,7 +15,7 @@
     "build:production": "ENVIRONMENT=production ./scripts/build.sh"
   },
   "devDependencies": {
-    "@types/webextension-polyfill": "^0.10.0",
+    "@types/webextension-polyfill": "^0.10.7",
     "typescript": "^5.3.3",
     "vite": "^4.5.2",
     "vite-plugin-web-extension": "^3.0.1",
