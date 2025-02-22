@@ -47,7 +47,7 @@ function identify(token: string) {
   });
 }
 
-async function fetchPledges(page = 1) {
+async function fetchPledges(token: string, page = 1) {
   return fetch(`${RSI_BASE_URL}/account/pledges?page=${page}`, {
     method: "GET",
     headers: {
@@ -55,6 +55,7 @@ async function fetchPledges(page = 1) {
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
       "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
       "Cache-Control": "max-age=0",
+      "X-Rsi-Token": token,
     },
     credentials: "include",
   });
@@ -97,16 +98,27 @@ async function onMessage(
       );
     }
   } else if (message?.action == "sync") {
-    const response = await fetchPledges(message.page);
-    const payload = await response.text();
+    const token = await getRSIToken();
+    if (!token) {
+      sendResponse(
+        JSON.stringify({
+          code: 400,
+          action: message.action,
+          error: "Token not found" + message?.action,
+        })
+      );
+    } else {
+      const response = await fetchPledges(token, message.page);
+      const payload = await response.text();
 
-    sendResponse(
-      JSON.stringify({
-        code: response.status,
-        action: message.action,
-        payload,
-      })
-    );
+      sendResponse(
+        JSON.stringify({
+          code: response.status,
+          action: message.action,
+          payload,
+        })
+      );
+    }
   } else {
     console.info("FY Sync: Unknown Action");
 
