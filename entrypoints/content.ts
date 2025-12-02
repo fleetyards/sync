@@ -1,9 +1,7 @@
 export default defineContentScript({
-  matches: [
-    "*://*.fleetyards.net/*",
-    "*://fleetyards.dev/*",
-    "*://fleetyards.test/*",
-  ],
+  matches: import.meta.env.PROD
+    ? ["*://*.fleetyards.net/*"]
+    : ["*://fleetyards.test/*", "*://fleetyards.dev/*"],
   main() {
     function handleResponse(response: any) {
       const origin = window.parent.location.origin;
