@@ -6,19 +6,25 @@
   "version": "1.0.5",
   "type": "module",
   "scripts": {
-    "compile": "tsc --noEmit",
-    "dev": "vite",
-    "dev:chrome": "TARGET=chrome vite build",
-    "dev:firefox": "TARGET=firefox vite build",
-    "build": "./scripts/build.sh",
-    "build:staging": "ENVIRONMENT=staging ./scripts/build.sh",
-    "build:production": "ENVIRONMENT=production ./scripts/build.sh"
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "vue": "^3.5.21"
   },
   "devDependencies": {
-    "@types/webextension-polyfill": "^0.10.7",
-    "typescript": "^5.3.3",
-    "vite": "^4.5.2",
-    "vite-plugin-web-extension": "^3.0.1",
-    "webextension-polyfill": "^0.10.0"
+    "@wxt-dev/module-vue": "^1.0.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.1.1",
+    "vue-tsc": "^3.0.6",
+    "wxt": "^0.20.6"
   }
 }

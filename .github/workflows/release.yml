@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Type Check
+        run: pnpm compile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Zip Chrome Extension
+        run: pnpm zip
+
+      - name: Zip Firefox Extension
+        run: pnpm zip:firefox
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ github.event.release.tag_name }}"
+
+          gh release upload "${TAG}" \
+            ".output/fleetyards-sync-${VERSION}-chrome.zip" \
+            ".output/fleetyards-sync-${VERSION}-firefox.zip" \
+            ".output/fleetyards-sync-${VERSION}-sources.zip"
+
+      - name: Upload Chrome zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: .output/fleetyards-sync-*-chrome.zip
+
+      - name: Upload Firefox zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: .output/fleetyards-sync-*-firefox.zip
+
+      - name: Upload Firefox sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-sources
+          path: .output/fleetyards-sync-*-sources.zip
+
+  publish-chrome:
+    name: Publish to Chrome Web Store
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Install 1Password CLI
+        run: |
+          curl -sSfo /tmp/op.zip "https://cache.agilebits.com/dist/1P/op2/pkg/v2.33.0/op_linux_amd64_v2.33.0.zip"
+          unzip -o /tmp/op.zip -d /usr/local/bin op
+          chmod +x /usr/local/bin/op
+
+      - name: Fetch Chrome Web Store secrets
+        id: secrets
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          EXTENSION_ID=$(op read "op://Fleetyards/CHROME_EXTENSION/extension-id")
+          CLIENT_ID=$(op read "op://Fleetyards/CHROME_EXTENSION/client-id")
+          CLIENT_SECRET=$(op read "op://Fleetyards/CHROME_EXTENSION/client-secret")
+          REFRESH_TOKEN=$(op read "op://Fleetyards/CHROME_EXTENSION/refresh-token")
+
+          echo "::add-mask::$CLIENT_ID"
+          echo "::add-mask::$CLIENT_SECRET"
+          echo "::add-mask::$REFRESH_TOKEN"
+
+          echo "extension_id=$EXTENSION_ID" >> "$GITHUB_OUTPUT"
+          echo "client_id=$CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "client_secret=$CLIENT_SECRET" >> "$GITHUB_OUTPUT"
+          echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Download Chrome zip
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension
+
+      - name: Publish to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: fleetyards-sync-*-chrome.zip
+          extension-id: ${{ steps.secrets.outputs.extension_id }}
+          client-id: ${{ steps.secrets.outputs.client_id }}
+          client-secret: ${{ steps.secrets.outputs.client_secret }}
+          refresh-token: ${{ steps.secrets.outputs.refresh_token }}
+
+  publish-firefox:
+    name: Publish to Firefox Add-ons
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Install 1Password CLI
+        run: |
+          curl -sSfo /tmp/op.zip "https://cache.agilebits.com/dist/1P/op2/pkg/v2.33.0/op_linux_amd64_v2.33.0.zip"
+          unzip -o /tmp/op.zip -d /usr/local/bin op
+          chmod +x /usr/local/bin/op
+
+      - name: Fetch Firefox Add-ons secrets
+        id: secrets
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          ADDON_ID=$(op read "op://Fleetyards/FIREFOX_ADDON/addon-id")
+          API_ISSUER=$(op read "op://Fleetyards/FIREFOX_ADDON/api-issuer")
+          API_SECRET=$(op read "op://Fleetyards/FIREFOX_ADDON/api-secret")
+
+          echo "::add-mask::$API_ISSUER"
+          echo "::add-mask::$API_SECRET"
+
+          echo "addon_id=$ADDON_ID" >> "$GITHUB_OUTPUT"
+          echo "api_issuer=$API_ISSUER" >> "$GITHUB_OUTPUT"
+          echo "api_secret=$API_SECRET" >> "$GITHUB_OUTPUT"
+
+      - name: Download Firefox zip
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-extension
+
+      - name: Download Firefox sources
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-sources
+
+      - name: Publish to Firefox Add-ons
+        uses: browser-actions/release-firefox-addon@v0.2.0
+        with:
+          addon-id: ${{ steps.secrets.outputs.addon_id }}
+          addon-path: fleetyards-sync-*-firefox.zip
+          source-path: fleetyards-sync-*-sources.zip
+          auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
+          auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
