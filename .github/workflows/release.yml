@@ -80,6 +80,31 @@ jobs:
     needs: build
 
     steps:
+      - name: Install 1Password CLI
+        run: |
+          curl -sSfo /tmp/op.zip "https://cache.agilebits.com/dist/1P/op2/pkg/v2.33.0/op_linux_amd64_v2.33.0.zip"
+          unzip -o /tmp/op.zip -d /usr/local/bin op
+          chmod +x /usr/local/bin/op
+
+      - name: Fetch Chrome Web Store secrets
+        id: secrets
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          EXTENSION_ID=$(op read "op://Fleetyards/CHROME_EXTENSION/extension-id")
+          CLIENT_ID=$(op read "op://Fleetyards/CHROME_EXTENSION/client-id")
+          CLIENT_SECRET=$(op read "op://Fleetyards/CHROME_EXTENSION/client-secret")
+          REFRESH_TOKEN=$(op read "op://Fleetyards/CHROME_EXTENSION/refresh-token")
+
+          echo "::add-mask::$CLIENT_ID"
+          echo "::add-mask::$CLIENT_SECRET"
+          echo "::add-mask::$REFRESH_TOKEN"
+
+          echo "extension_id=$EXTENSION_ID" >> "$GITHUB_OUTPUT"
+          echo "client_id=$CLIENT_ID" >> "$GITHUB_OUTPUT"
+          echo "client_secret=$CLIENT_SECRET" >> "$GITHUB_OUTPUT"
+          echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Download Chrome zip
         uses: actions/download-artifact@v4
         with:
@@ -89,10 +114,10 @@ jobs:
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:
           file-path: fleetyards-sync-*-chrome.zip
-          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
-          client-id: ${{ secrets.CHROME_CLIENT_ID }}
-          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
-          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          extension-id: ${{ steps.secrets.outputs.extension_id }}
+          client-id: ${{ steps.secrets.outputs.client_id }}
+          client-secret: ${{ steps.secrets.outputs.client_secret }}
+          refresh-token: ${{ steps.secrets.outputs.refresh_token }}
 
   publish-firefox:
     name: Publish to Firefox Add-ons
@@ -100,6 +125,28 @@ jobs:
     needs: build
 
     steps:
+      - name: Install 1Password CLI
+        run: |
+          curl -sSfo /tmp/op.zip "https://cache.agilebits.com/dist/1P/op2/pkg/v2.33.0/op_linux_amd64_v2.33.0.zip"
+          unzip -o /tmp/op.zip -d /usr/local/bin op
+          chmod +x /usr/local/bin/op
+
+      - name: Fetch Firefox Add-ons secrets
+        id: secrets
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+        run: |
+          ADDON_ID=$(op read "op://Fleetyards/FIREFOX_ADDON/addon-id")
+          API_ISSUER=$(op read "op://Fleetyards/FIREFOX_ADDON/api-issuer")
+          API_SECRET=$(op read "op://Fleetyards/FIREFOX_ADDON/api-secret")
+
+          echo "::add-mask::$API_ISSUER"
+          echo "::add-mask::$API_SECRET"
+
+          echo "addon_id=$ADDON_ID" >> "$GITHUB_OUTPUT"
+          echo "api_issuer=$API_ISSUER" >> "$GITHUB_OUTPUT"
+          echo "api_secret=$API_SECRET" >> "$GITHUB_OUTPUT"
+
       - name: Download Firefox zip
         uses: actions/download-artifact@v4
         with:
@@ -113,8 +160,8 @@ jobs:
       - name: Publish to Firefox Add-ons
         uses: browser-actions/release-firefox-addon@v0.2.0
         with:
-          addon-id: ${{ secrets.FIREFOX_ADDON_ID }}
+          addon-id: ${{ steps.secrets.outputs.addon_id }}
           addon-path: fleetyards-sync-*-firefox.zip
           source-path: fleetyards-sync-*-sources.zip
-          auth-api-issuer: ${{ secrets.FIREFOX_API_ISSUER }}
-          auth-api-secret: ${{ secrets.FIREFOX_API_SECRET }}
+          auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
+          auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
