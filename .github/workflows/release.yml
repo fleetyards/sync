@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - run: pnpm install
+
+      - name: Type Check
+        run: pnpm compile
+
+      - name: Test
+        run: pnpm test
+
+      - name: Zip Chrome Extension
+        run: pnpm zip
+
+      - name: Zip Firefox Extension
+        run: pnpm zip:firefox
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            .output/fleetyards-sync-${{ steps.version.outputs.version }}-chrome.zip
+            .output/fleetyards-sync-${{ steps.version.outputs.version }}-firefox.zip
+            .output/fleetyards-sync-${{ steps.version.outputs.version }}-sources.zip
