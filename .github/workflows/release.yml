@@ -57,19 +57,19 @@ jobs:
             ".output/fleetyards-sync-${VERSION}-sources.zip"
 
       - name: Upload Chrome zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chrome-extension
           path: .output/fleetyards-sync-*-chrome.zip
 
       - name: Upload Firefox zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-extension
           path: .output/fleetyards-sync-*-firefox.zip
 
       - name: Upload Firefox sources
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firefox-sources
           path: .output/fleetyards-sync-*-sources.zip
