@@ -8,8 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build & Upload Assets
+  build:
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -55,3 +55,66 @@ jobs:
             ".output/fleetyards-sync-${VERSION}-chrome.zip" \
             ".output/fleetyards-sync-${VERSION}-firefox.zip" \
             ".output/fleetyards-sync-${VERSION}-sources.zip"
+
+      - name: Upload Chrome zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension
+          path: .output/fleetyards-sync-*-chrome.zip
+
+      - name: Upload Firefox zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-extension
+          path: .output/fleetyards-sync-*-firefox.zip
+
+      - name: Upload Firefox sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-sources
+          path: .output/fleetyards-sync-*-sources.zip
+
+  publish-chrome:
+    name: Publish to Chrome Web Store
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download Chrome zip
+        uses: actions/download-artifact@v4
+        with:
+          name: chrome-extension
+
+      - name: Publish to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: fleetyards-sync-*-chrome.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+  publish-firefox:
+    name: Publish to Firefox Add-ons
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download Firefox zip
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-extension
+
+      - name: Download Firefox sources
+        uses: actions/download-artifact@v4
+        with:
+          name: firefox-sources
+
+      - name: Publish to Firefox Add-ons
+        uses: browser-actions/release-firefox-addon@v0.2.0
+        with:
+          addon-id: ${{ secrets.FIREFOX_ADDON_ID }}
+          addon-path: fleetyards-sync-*-firefox.zip
+          source-path: fleetyards-sync-*-sources.zip
+          auth-api-issuer: ${{ secrets.FIREFOX_API_ISSUER }}
+          auth-api-secret: ${{ secrets.FIREFOX_API_SECRET }}
