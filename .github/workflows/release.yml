@@ -1,20 +1,21 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [published]
 
 permissions:
   contents: write
 
 jobs:
   release:
-    name: Build & Release
+    name: Build & Upload Assets
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -43,11 +44,14 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            .output/fleetyards-sync-${{ steps.version.outputs.version }}-chrome.zip
-            .output/fleetyards-sync-${{ steps.version.outputs.version }}-firefox.zip
-            .output/fleetyards-sync-${{ steps.version.outputs.version }}-sources.zip
+      - name: Upload assets to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ github.event.release.tag_name }}"
+
+          gh release upload "${TAG}" \
+            ".output/fleetyards-sync-${VERSION}-chrome.zip" \
+            ".output/fleetyards-sync-${VERSION}-firefox.zip" \
+            ".output/fleetyards-sync-${VERSION}-sources.zip"
