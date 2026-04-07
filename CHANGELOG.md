@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.3](https://github.com/fleetyards/sync/compare/v1.2.2...v1.2.3) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** use correct input name release-note for Firefox Add-ons action ([00eeb00](https://github.com/fleetyards/sync/commit/00eeb00b0e67a6c22afca07295b97bd7bd834a90))
+* remove URL pattern from permissions array ([d6c22cd](https://github.com/fleetyards/sync/commit/d6c22cd63e1eca8c0ed4b26594b57555770a5ac6))
+
 ## [1.2.2](https://github.com/fleetyards/sync/compare/v1.2.1...v1.2.2) (2026-04-07)
 
 
