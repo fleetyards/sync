@@ -5,7 +5,7 @@ export default defineConfig({
   modules: ["@wxt-dev/module-vue"],
   manifest: {
     homepage_url: "https://fleetyards.net",
-    permissions: ["cookies", "https://robertsspaceindustries.com/*"],
+    permissions: ["cookies"],
     host_permissions: ["https://robertsspaceindustries.com/*"],
     icons: {
       "16": "icon/16.png",
