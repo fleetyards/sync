@@ -160,15 +160,62 @@ jobs:
           name: firefox-sources
 
       - name: Publish to Firefox Add-ons
-        uses: browser-actions/release-firefox-addon@v0.2.1
-        with:
-          addon-id: ${{ steps.secrets.outputs.addon_id }}
-          addon-path: fleetyards-sync-${{ needs.build.outputs.version }}-firefox.zip
-          source-path: fleetyards-sync-${{ needs.build.outputs.version }}-sources.zip
-          auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
-          auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
-          license: GPL-3.0-only
-          release-note: ${{ github.event.release.body }}
+        env:
+          ADDON_ID: ${{ steps.secrets.outputs.addon_id }}
+          API_ISSUER: ${{ steps.secrets.outputs.api_issuer }}
+          API_SECRET: ${{ steps.secrets.outputs.api_secret }}
+          VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_NOTE: ${{ github.event.release.body }}
+        run: |
+          # Generate JWT token
+          JWT=$(node -e "
+            const crypto = require('crypto');
+            const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+            const now = Math.floor(Date.now()/1000);
+            const payload = Buffer.from(JSON.stringify({
+              iss: process.env.API_ISSUER,
+              jti: crypto.randomUUID(),
+              iat: now,
+              exp: now + 300
+            })).toString('base64url');
+            const sig = crypto.createHmac('sha256', process.env.API_SECRET)
+              .update(header+'.'+payload).digest('base64url');
+            console.log(header+'.'+payload+'.'+sig);
+          ")
+
+          BASE="https://addons.mozilla.org/api/v5"
+          AUTH="Authorization: JWT ${JWT}"
+
+          # Upload addon
+          echo "Uploading addon..."
+          UPLOAD_RESP=$(curl -sSf -X POST "${BASE}/addons/upload/" \
+            -H "${AUTH}" \
+            -F "upload=@fleetyards-sync-${VERSION}-firefox.zip" \
+            -F "channel=listed")
+          UUID=$(echo "${UPLOAD_RESP}" | jq -r '.uuid')
+          echo "Upload UUID: ${UUID}"
+
+          # Wait for processing
+          for i in $(seq 1 30); do
+            sleep 2
+            STATUS=$(curl -sS "${BASE}/addons/upload/${UUID}/" -H "${AUTH}" | jq -r '.processed')
+            if [ "${STATUS}" = "true" ]; then
+              echo "Upload processed"
+              break
+            fi
+            echo "Waiting for processing... (${i}/30)"
+          done
+
+          # Create version with upload, source, and release notes
+          echo "Creating version..."
+          curl -sSf -X POST "${BASE}/addons/addon/${ADDON_ID}/versions/" \
+            -H "${AUTH}" \
+            -F "upload=${UUID}" \
+            -F "source=@fleetyards-sync-${VERSION}-sources.zip" \
+            -F "release_notes={\"en-US\":$(echo "${RELEASE_NOTE}" | jq -Rs '.')}" \
+            | jq .
+
+          echo "Published version ${VERSION} to Firefox Add-ons"
 
   notify-discord:
     runs-on: ubuntu-latest
