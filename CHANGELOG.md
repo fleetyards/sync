@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/fleetyards/sync/compare/v1.2.0...v1.2.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** use exact versioned filenames in publish steps ([0ec3e59](https://github.com/fleetyards/sync/commit/0ec3e59ced6b51d7900d0e44028cdfc68d2dc102))
+
 ## [1.2.0](https://github.com/fleetyards/sync/compare/v1.1.0...v1.2.0) (2026-04-07)
 
 
