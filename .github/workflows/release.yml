@@ -167,7 +167,7 @@ jobs:
           source-path: fleetyards-sync-${{ needs.build.outputs.version }}-sources.zip
           auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
           auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
-          release-notes: ${{ github.event.release.body }}
+          release-note: ${{ github.event.release.body }}
 
   notify-discord:
     runs-on: ubuntu-latest
