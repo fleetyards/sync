@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.release.tag_name }}
 
@@ -60,19 +60,19 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: chrome-extension
-          path: .output/fleetyards-sync-*-chrome.zip
+          path: .output/fleetyards-sync-${{ steps.version.outputs.version }}-chrome.zip
 
       - name: Upload Firefox zip
         uses: actions/upload-artifact@v7
         with:
           name: firefox-extension
-          path: .output/fleetyards-sync-*-firefox.zip
+          path: .output/fleetyards-sync-${{ steps.version.outputs.version }}-firefox.zip
 
       - name: Upload Firefox sources
         uses: actions/upload-artifact@v7
         with:
           name: firefox-sources
-          path: .output/fleetyards-sync-*-sources.zip
+          path: .output/fleetyards-sync-${{ steps.version.outputs.version }}-sources.zip
 
   publish-chrome:
     name: Publish to Chrome Web Store
@@ -106,7 +106,7 @@ jobs:
           echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Download Chrome zip
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: chrome-extension
 
@@ -148,12 +148,12 @@ jobs:
           echo "api_secret=$API_SECRET" >> "$GITHUB_OUTPUT"
 
       - name: Download Firefox zip
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: firefox-extension
 
       - name: Download Firefox sources
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: firefox-sources
 
@@ -165,3 +165,33 @@ jobs:
           source-path: fleetyards-sync-*-sources.zip
           auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
           auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
+
+  notify-discord:
+    name: Notify Discord
+    runs-on: ubuntu-latest
+    needs: [publish-chrome, publish-firefox]
+
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          VERSION="${{ github.event.release.tag_name }}"
+          RELEASE_URL="${{ github.event.release.html_url }}"
+          RELEASE_BODY=$(echo '${{ toJSON(github.event.release.body) }}' | jq -r '.' | head -c 1500)
+
+          curl -sSf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg title "Fleetyards Sync $VERSION released!" \
+              --arg url "$RELEASE_URL" \
+              --arg description "$RELEASE_BODY" \
+              '{
+                embeds: [{
+                  title: $title,
+                  url: $url,
+                  description: $description,
+                  color: 3066993
+                }]
+              }'
+            )"
