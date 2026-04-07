@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -113,7 +115,7 @@ jobs:
       - name: Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v6.0.0
         with:
-          file-path: fleetyards-sync-*-chrome.zip
+          file-path: fleetyards-sync-${{ needs.build.outputs.version }}-chrome.zip
           extension-id: ${{ steps.secrets.outputs.extension_id }}
           client-id: ${{ steps.secrets.outputs.client_id }}
           client-secret: ${{ steps.secrets.outputs.client_secret }}
@@ -161,8 +163,8 @@ jobs:
         uses: browser-actions/release-firefox-addon@v0.2.1
         with:
           addon-id: ${{ steps.secrets.outputs.addon_id }}
-          addon-path: fleetyards-sync-*-firefox.zip
-          source-path: fleetyards-sync-*-sources.zip
+          addon-path: fleetyards-sync-${{ needs.build.outputs.version }}-firefox.zip
+          source-path: fleetyards-sync-${{ needs.build.outputs.version }}-sources.zip
           auth-api-issuer: ${{ steps.secrets.outputs.api_issuer }}
           auth-api-secret: ${{ steps.secrets.outputs.api_secret }}
 
