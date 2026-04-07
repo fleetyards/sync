@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/fleetyards/sync/compare/v1.1.0...v1.2.0) (2026-04-07)
+
+
+### Features
+
+* **ci:** add Discord notification with embed on release ([3775868](https://github.com/fleetyards/sync/commit/3775868cb03a885f4e8608082f4d48bc0fed2722))
+
+
+### Bug Fixes
+
+* **ci:** fix release workflow artifact upload and bump action versions ([d1b7188](https://github.com/fleetyards/sync/commit/d1b71888c02baf6cc2bda0fb15be31d8e0523446))
+
 ## [1.1.0](https://github.com/fleetyards/sync/compare/v1.0.5...v1.1.0) (2026-04-07)
 
 
