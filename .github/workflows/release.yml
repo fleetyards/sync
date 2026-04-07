@@ -234,7 +234,7 @@ jobs:
             -d "$(jq -n \
               --arg title "Fleetyards Sync ${TAG_NAME} released!" \
               --arg url "$RELEASE_URL" \
-              --arg description "$RELEASE_BODY" \
+              --arg description "$RELEASE_BODY"$'\n\n'"_Note: It may take some time for the update to appear in the Chrome Web Store and Firefox Add-ons._" \
               '{
                 embeds: [{
                   title: $title,
