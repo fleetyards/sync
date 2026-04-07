@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.5](https://github.com/fleetyards/sync/compare/v1.2.4...v1.2.5) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** use correct AMO license slug GPL-3.0-only ([673b98b](https://github.com/fleetyards/sync/commit/673b98b53d5158e6f0f91cbfa58e4396de9774d7))
+
 ## [1.2.4](https://github.com/fleetyards/sync/compare/v1.2.3...v1.2.4) (2026-04-07)
 
 
