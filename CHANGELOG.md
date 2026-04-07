@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/fleetyards/sync/compare/v1.2.3...v1.2.4) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** add explicit license to Firefox Add-ons publish step ([ab62c6f](https://github.com/fleetyards/sync/commit/ab62c6fb2a6f19f6c9891f6b95d442e2c2e15a60))
+
 ## [1.2.3](https://github.com/fleetyards/sync/compare/v1.2.2...v1.2.3) (2026-04-07)
 
 
