@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.6](https://github.com/fleetyards/sync/compare/v1.2.5...v1.2.6) (2026-04-07)
+
+
+### Bug Fixes
+
+* **ci:** replace broken Firefox addon action with direct API calls ([70cbf31](https://github.com/fleetyards/sync/commit/70cbf317c8877572f90575280de440b5ee588213))
+
 ## [1.2.5](https://github.com/fleetyards/sync/compare/v1.2.4...v1.2.5) (2026-04-07)
 
 
