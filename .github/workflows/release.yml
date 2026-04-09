@@ -108,7 +108,7 @@ jobs:
           echo "refresh_token=$REFRESH_TOKEN" >> "$GITHUB_OUTPUT"
 
       - name: Download Chrome zip
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: chrome-extension
 
@@ -150,12 +150,12 @@ jobs:
           echo "api_secret=$API_SECRET" >> "$GITHUB_OUTPUT"
 
       - name: Download Firefox zip
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: firefox-extension
 
       - name: Download Firefox sources
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: firefox-sources
 
