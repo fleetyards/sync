@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.3.0](https://github.com/fleetyards/sync/compare/v1.2.6...v1.3.0) (2026-08-17)
+
+
+### Features
+
+* add store delay notice to Discord release notification ([793eae1](https://github.com/fleetyards/sync/commit/793eae1460d42f934ea6c8e757f11154a4ec6305))
+
+
+### Bug Fixes
+
+* **ci:** approve pnpm build scripts for esbuild and spawn-sync ([c726799](https://github.com/fleetyards/sync/commit/c726799e001112470763b39bdec95339ab7a85a3))
+* **ci:** use .npmrc for pnpm build script approval ([f98b65e](https://github.com/fleetyards/sync/commit/f98b65e2c0457195632f99967b6d9a91220d57f1))
+
+
+### Chores
+
+* **deps-dev:** bump vitest from 4.1.2 to 4.1.4 ([#95](https://github.com/fleetyards/sync/issues/95)) ([cdc3184](https://github.com/fleetyards/sync/commit/cdc3184efd35f54ac291f311c2b7a5cb881d79a6))
+* **deps-dev:** bump vitest from 4.1.4 to 4.1.10 ([#139](https://github.com/fleetyards/sync/issues/139)) ([4cafb82](https://github.com/fleetyards/sync/commit/4cafb8278ba56d98592a83fa4953ebe9cc116349))
+* **deps-dev:** bump vue-tsc from 3.2.7 to 3.3.9 ([#138](https://github.com/fleetyards/sync/issues/138)) ([a43f47c](https://github.com/fleetyards/sync/commit/a43f47c139bd5394f017397e529dd9385e27d584))
+* **deps:** bump actions/checkout from 4 to 6 ([#93](https://github.com/fleetyards/sync/issues/93)) ([8940de8](https://github.com/fleetyards/sync/commit/8940de84a58d66ca42cbf91ff87655740784bb7a))
+* **deps:** bump actions/download-artifact from 7 to 8 ([#92](https://github.com/fleetyards/sync/issues/92)) ([1026f94](https://github.com/fleetyards/sync/commit/1026f94c5601124dc99ab43dbbbb6e8d2fa8d734))
+* **deps:** bump vue from 3.5.31 to 3.5.32 ([#94](https://github.com/fleetyards/sync/issues/94)) ([cafaeb2](https://github.com/fleetyards/sync/commit/cafaeb23c7186480ddb9f4c8799cd8473c9b511f))
+* **deps:** bump vue from 3.5.32 to 3.5.40 ([#142](https://github.com/fleetyards/sync/issues/142)) ([bacf34e](https://github.com/fleetyards/sync/commit/bacf34e64464a6ad099ae9634522aba779098092))
+* **skills:** add deps triage skill ([#143](https://github.com/fleetyards/sync/issues/143)) ([7f78ca9](https://github.com/fleetyards/sync/commit/7f78ca98eed4cc7fe7663ac15e642ca032032ce3))
+
 ## [1.2.6](https://github.com/fleetyards/sync/compare/v1.2.5...v1.2.6) (2026-04-07)
 
 
