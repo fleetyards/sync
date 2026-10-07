@@ -28,16 +28,28 @@ export function identify(token: string) {
   });
 }
 
-export function fetchPledges(token: string, page = 1) {
-  return fetch(`${RSI_BASE_URL}/account/pledges?page=${page}`, {
+const HTML_PAGE_HEADERS = {
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+  "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
+  "Cache-Control": "max-age=0",
+};
+
+function fetchAccountPage(path: string, token: string, page: number) {
+  return fetch(`${RSI_BASE_URL}/account/${path}?page=${page}`, {
     method: "GET",
     headers: {
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      "Accept-Language": "en-GB,en-US;q=0.9,en;q=0.8",
-      "Cache-Control": "max-age=0",
+      ...HTML_PAGE_HEADERS,
       "X-Rsi-Token": token,
     },
     credentials: "include",
   });
+}
+
+export function fetchPledges(token: string, page = 1) {
+  return fetchAccountPage("pledges", token, page);
+}
+
+export function fetchBuybacks(token: string, page = 1) {
+  return fetchAccountPage("buy-back-pledges", token, page);
 }

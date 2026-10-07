@@ -1,19 +1,33 @@
-import { identify, fetchPledges } from "./rsi";
+import { identify, fetchPledges, fetchBuybacks } from "./rsi";
 
 type GetToken = () => Promise<string | null>;
 type SendResponse = (message: string) => void;
 
+export const SUPPORTED_ACTIONS = [
+  "health",
+  "identify",
+  "sync",
+  "syncBuyback",
+] as const;
+
 export async function onMessage(
   rawMessage: string,
   sendResponse: SendResponse,
-  getToken: GetToken
+  getToken: GetToken,
+  version: string
 ) {
   const message = JSON.parse(rawMessage || "{}");
 
   if (message?.action == "health") {
     console.info("FY Sync: Health check");
 
-    sendResponse(JSON.stringify({ code: 200, action: message.action }));
+    sendResponse(
+      JSON.stringify({
+        code: 200,
+        action: message.action,
+        payload: { version, actions: SUPPORTED_ACTIONS },
+      })
+    );
   } else if (message?.action == "identify") {
     console.info("FY Sync: Fetching Identity");
 
@@ -40,7 +54,7 @@ export async function onMessage(
         })
       );
     }
-  } else if (message?.action == "sync") {
+  } else if (message?.action == "sync" || message?.action == "syncBuyback") {
     const token = await getToken();
     if (!token) {
       sendResponse(
@@ -51,7 +65,9 @@ export async function onMessage(
         })
       );
     } else {
-      const response = await fetchPledges(token, message.page);
+      const fetchPage =
+        message.action == "syncBuyback" ? fetchBuybacks : fetchPledges;
+      const response = await fetchPage(token, message.page);
       const payload = await response.text();
 
       sendResponse(
@@ -81,12 +97,21 @@ const ALLOWED_ORIGINS = [
   "http://fleetyards.test",
 ] as const;
 
+const LOCAL_WORKTREE_ORIGIN = /^http:\/\/localhost:8\d{3}$/;
+
+function isAllowedOrigin(origin: string) {
+  return (
+    ALLOWED_ORIGINS.includes(origin as any) ||
+    LOCAL_WORKTREE_ORIGIN.test(origin)
+  );
+}
+
 export function handleResponse(
   response: any,
   origin: string,
   postMessage: (data: any, targetOrigin: string) => void
 ) {
-  if (ALLOWED_ORIGINS.includes(origin as any)) {
+  if (isAllowedOrigin(origin)) {
     postMessage(
       {
         direction: "fy-sync",

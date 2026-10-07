@@ -10,10 +10,22 @@ describe("onMessage", () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn();
 
-    await onMessage(JSON.stringify({ action: "health" }), sendResponse, getToken);
+    await onMessage(
+      JSON.stringify({ action: "health" }),
+      sendResponse,
+      getToken,
+      "1.2.3"
+    );
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
-    expect(result).toEqual({ code: 200, action: "health" });
+    expect(result).toEqual({
+      code: 200,
+      action: "health",
+      payload: {
+        version: "1.2.3",
+        actions: ["health", "identify", "sync", "syncBuyback"],
+      },
+    });
     expect(getToken).not.toHaveBeenCalled();
   });
 
@@ -29,7 +41,7 @@ describe("onMessage", () => {
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as any);
 
-    await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken);
+    await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken, "1.0.0");
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
     expect(result.code).toBe(200);
@@ -41,7 +53,7 @@ describe("onMessage", () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn().mockResolvedValue(null);
 
-    await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken);
+    await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken, "1.0.0");
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
     expect(result.code).toBe(400);
@@ -61,7 +73,8 @@ describe("onMessage", () => {
     await onMessage(
       JSON.stringify({ action: "sync", page: 2 }),
       sendResponse,
-      getToken
+      getToken,
+      "1.0.0"
     );
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
@@ -79,7 +92,51 @@ describe("onMessage", () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn().mockResolvedValue(null);
 
-    await onMessage(JSON.stringify({ action: "sync" }), sendResponse, getToken);
+    await onMessage(JSON.stringify({ action: "sync" }), sendResponse, getToken, "1.0.0");
+
+    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    expect(result.code).toBe(400);
+    expect(result.error).toContain("Token not found");
+  });
+
+  it("responds to syncBuyback action with token", async () => {
+    const sendResponse = vi.fn();
+    const getToken = vi.fn().mockResolvedValue("test-token");
+
+    const mockResponse = {
+      status: 200,
+      text: vi.fn().mockResolvedValue("<html>buyback data</html>"),
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as any);
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuyback", page: 2 }),
+      sendResponse,
+      getToken,
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    expect(result.code).toBe(200);
+    expect(result.action).toBe("syncBuyback");
+    expect(result.payload).toBe("<html>buyback data</html>");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/buy-back-pledges?page=2",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("responds to syncBuyback action without token", async () => {
+    const sendResponse = vi.fn();
+    const getToken = vi.fn().mockResolvedValue(null);
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuyback" }),
+      sendResponse,
+      getToken,
+      "1.0.0"
+    );
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
     expect(result.code).toBe(400);
@@ -90,7 +147,7 @@ describe("onMessage", () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn();
 
-    await onMessage(JSON.stringify({ action: "unknown" }), sendResponse, getToken);
+    await onMessage(JSON.stringify({ action: "unknown" }), sendResponse, getToken, "1.0.0");
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
     expect(result.code).toBe(500);
@@ -101,7 +158,7 @@ describe("onMessage", () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn();
 
-    await onMessage("", sendResponse, getToken);
+    await onMessage("", sendResponse, getToken, "1.0.0");
 
     const result = JSON.parse(sendResponse.mock.calls[0][0]);
     expect(result.code).toBe(500);
@@ -138,6 +195,24 @@ describe("handleResponse", () => {
       { direction: "fy-sync", message: { data: "test" } },
       "http://fleetyards.test"
     );
+  });
+
+  it("posts message for localhost worktree origin", () => {
+    const postMessage = vi.fn();
+    handleResponse({ data: "test" }, "http://localhost:8123", postMessage);
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { direction: "fy-sync", message: { data: "test" } },
+      "http://localhost:8123"
+    );
+  });
+
+  it("does not post message for localhost outside the 8xxx range", () => {
+    const postMessage = vi.fn();
+    handleResponse({ data: "test" }, "http://localhost:3000", postMessage);
+    handleResponse({ data: "test" }, "http://localhost:80000", postMessage);
+
+    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("does not post message for unknown origin", () => {

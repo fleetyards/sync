@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchRSIApi, identify, fetchPledges, RSI_BASE_URL } from "@/lib/rsi";
+import {
+  fetchRSIApi,
+  identify,
+  fetchPledges,
+  fetchBuybacks,
+  RSI_BASE_URL,
+} from "@/lib/rsi";
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -83,6 +89,38 @@ describe("fetchPledges", () => {
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://robertsspaceindustries.com/account/pledges?page=5",
+      expect.anything()
+    );
+  });
+});
+
+describe("fetchBuybacks", () => {
+  it("fetches buybacks with default page 1", async () => {
+    const mockResponse = new Response("html", { status: 200 });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
+
+    await fetchBuybacks("test-token");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/buy-back-pledges?page=1",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "X-Rsi-Token": "test-token",
+          "Cache-Control": "max-age=0",
+        }),
+      })
+    );
+  });
+
+  it("fetches buybacks with specified page", async () => {
+    const mockResponse = new Response("html", { status: 200 });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
+
+    await fetchBuybacks("test-token", 3);
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/buy-back-pledges?page=3",
       expect.anything()
     );
   });

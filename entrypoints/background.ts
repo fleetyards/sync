@@ -20,7 +20,12 @@ export default defineBackground(() => {
     _sender,
     sendResponse
   ) {
-    onMessage(message, sendResponse, getRSIToken);
+    onMessage(
+      message,
+      sendResponse,
+      getRSIToken,
+      browser.runtime.getManifest().version
+    );
 
     return true;
   });

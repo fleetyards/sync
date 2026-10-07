@@ -3,7 +3,7 @@ import { handleResponse } from "@/lib/message-handler";
 export default defineContentScript({
   matches: import.meta.env.PROD
     ? ["*://*.fleetyards.net/*", "*://*.fleetyards.dev/*"]
-    : ["*://fleetyards.test/*", "*://fleetyards.dev/*"],
+    : ["*://fleetyards.test/*", "*://fleetyards.dev/*", "http://localhost/*"],
   main() {
     window.addEventListener("message", async (event) => {
       if (
