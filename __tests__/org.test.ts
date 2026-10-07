@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  contentBlocks,
+  contentSections,
   hasPendingChanges,
   isAccessDenied,
+  pageShowsToken,
   parseDraftField,
 } from "@/lib/org";
 
@@ -47,19 +48,32 @@ describe("parseDraftField", () => {
   });
 });
 
-describe("contentBlocks", () => {
-  it("reads every text block as plain text without tokens", () => {
+describe("contentSections", () => {
+  it("reads every section by name, without tokens", () => {
     expect(
-      contentBlocks(
+      contentSections(
         orgPage(
           '<p>Our board.</p>\n\n<p><span class="caps">FLEETYARDS</span>-ABCDEFGHIJ</p>'
         )
       )
-    ).toEqual(["Welcome aboard.", "Our board.", "Our manifesto."]);
+    ).toEqual(
+      new Map([
+        ["introduction", "<p>Welcome aboard.</p>"],
+        ["history", "<p>Our board.</p>"],
+        ["manifesto", "<p>Our manifesto.</p>"],
+      ])
+    );
+  });
+
+  it("reads a section past the divs Textile nests in it", () => {
+    expect(
+      contentSections(orgPage("<div class=\"note\"><p>Inner</p></div><p>After</p>"))
+        ?.get("history")
+    ).toBe('<div class="note"><p>Inner</p></div><p>After</p>');
   });
 
   it("refuses a page without text blocks", () => {
-    expect(contentBlocks("<title>Access denied</title>")).toBeNull();
+    expect(contentSections("<title>Access denied</title>")).toBeNull();
   });
 });
 
@@ -82,7 +96,48 @@ describe("hasPendingChanges", () => {
     ).toBe(true);
   });
 
+  it("sees a change that only touches markup", () => {
+    expect(
+      hasPendingChanges(
+        orgPage('<p>Our board. <img src="new.png" /></p>'),
+        orgPage('<p>Our board. <img src="old.png" /></p>')
+      )
+    ).toBe(true);
+  });
+
+  it("sees a change after a nested div", () => {
+    expect(
+      hasPendingChanges(
+        orgPage("<div><p>Same</p></div><p>Edited</p>"),
+        orgPage("<div><p>Same</p></div><p>Original</p>")
+      )
+    ).toBe(true);
+  });
+
+  it("reads a section one page leaves out as empty", () => {
+    const withEmptyCharter = `${orgPage("<p>Our board.</p>")}<div class="content-tab" id="tab-charter"><div class="markitup-text"></div></div>`;
+
+    expect(
+      hasPendingChanges(withEmptyCharter, orgPage("<p>Our board.</p>"))
+    ).toBe(false);
+  });
+
   it("refuses to compare a page it cannot read", () => {
     expect(hasPendingChanges("<html></html>", orgPage("<p>x</p>"))).toBeNull();
+  });
+});
+
+describe("pageShowsToken", () => {
+  it("finds a token Textile split with a span", () => {
+    expect(
+      pageShowsToken(
+        '<p><span class="caps">FLEETYARDS</span>-ABCDEFGHIJ</p>',
+        "FLEETYARDS-ABCDEFGHIJ"
+      )
+    ).toBe(true);
+  });
+
+  it("finds nothing on a page without it", () => {
+    expect(pageShowsToken("<p>Our board.</p>", "FLEETYARDS-ABCDEFGHIJ")).toBe(false);
   });
 });
