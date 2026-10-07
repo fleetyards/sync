@@ -21,7 +21,7 @@ function decodeEntities(text: string): string | null {
     (entity, name: string) => {
       if (name[0] === "#") {
         const code =
-          name[1].toLowerCase() === "x"
+          name[1]!.toLowerCase() === "x"
             ? parseInt(name.slice(2), 16)
             : parseInt(name.slice(1), 10);
 
@@ -61,7 +61,7 @@ export function parseBio(html: string): string | null {
   );
   if (!entry) return null;
 
-  const text = entry[1]
+  const text = entry[1]!
     .trim()
     .replace(/<br\s*\/?>(\r?\n)?/g, "\n")
     .replace(/\r\n?/g, "\n");

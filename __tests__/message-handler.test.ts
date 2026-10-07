@@ -205,7 +205,7 @@ describe("onMessage verify actions", () => {
       vi.fn().mockResolvedValue("rsi-token"),
       "1.2.3"
     );
-    return JSON.parse(sendResponse.mock.calls[0][0]);
+    return JSON.parse(sendResponse.mock.calls[0]![0]);
   };
 
   const writtenBio = (fetch: ReturnType<typeof mockRsi>) => {
@@ -294,7 +294,7 @@ describe("onMessage verify actions", () => {
       "1.2.3"
     );
 
-    expect(JSON.parse(sendResponse.mock.calls[0][0])).toMatchObject({
+    expect(JSON.parse(sendResponse.mock.calls[0]![0])).toMatchObject({
       code: 401,
       action: "verify-write",
     });
