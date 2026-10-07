@@ -1,4 +1,4 @@
-import { identify, fetchPledges } from "./rsi";
+import { identify, fetchPledges, fetchBuybacks } from "./rsi";
 
 type GetToken = () => Promise<string | null>;
 type SendResponse = (message: string) => void;
@@ -40,7 +40,7 @@ export async function onMessage(
         })
       );
     }
-  } else if (message?.action == "sync") {
+  } else if (message?.action == "sync" || message?.action == "syncBuyback") {
     const token = await getToken();
     if (!token) {
       sendResponse(
@@ -51,7 +51,9 @@ export async function onMessage(
         })
       );
     } else {
-      const response = await fetchPledges(token, message.page);
+      const fetchPage =
+        message.action == "syncBuyback" ? fetchBuybacks : fetchPledges;
+      const response = await fetchPage(token, message.page);
       const payload = await response.text();
 
       sendResponse(

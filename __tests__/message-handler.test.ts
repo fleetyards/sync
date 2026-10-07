@@ -86,6 +86,48 @@ describe("onMessage", () => {
     expect(result.error).toContain("Token not found");
   });
 
+  it("responds to syncBuyback action with token", async () => {
+    const sendResponse = vi.fn();
+    const getToken = vi.fn().mockResolvedValue("test-token");
+
+    const mockResponse = {
+      status: 200,
+      text: vi.fn().mockResolvedValue("<html>buyback data</html>"),
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as any);
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuyback", page: 2 }),
+      sendResponse,
+      getToken
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    expect(result.code).toBe(200);
+    expect(result.action).toBe("syncBuyback");
+    expect(result.payload).toBe("<html>buyback data</html>");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/buy-back-pledges?page=2",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("responds to syncBuyback action without token", async () => {
+    const sendResponse = vi.fn();
+    const getToken = vi.fn().mockResolvedValue(null);
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuyback" }),
+      sendResponse,
+      getToken
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    expect(result.code).toBe(400);
+    expect(result.error).toContain("Token not found");
+  });
+
   it("responds to unknown action", async () => {
     const sendResponse = vi.fn();
     const getToken = vi.fn();

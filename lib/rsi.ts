@@ -49,3 +49,7 @@ function fetchAccountPage(path: string, token: string, page: number) {
 export function fetchPledges(token: string, page = 1) {
   return fetchAccountPage("pledges", token, page);
 }
+
+export function fetchBuybacks(token: string, page = 1) {
+  return fetchAccountPage("buy-back-pledges", token, page);
+}
