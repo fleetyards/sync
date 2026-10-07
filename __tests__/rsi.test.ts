@@ -4,6 +4,8 @@ import {
   identify,
   fetchPledges,
   fetchBuybacks,
+  fetchCitizenPage,
+  updateBio,
   RSI_BASE_URL,
 } from "@/lib/rsi";
 
@@ -122,6 +124,40 @@ describe("fetchBuybacks", () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://robertsspaceindustries.com/account/buy-back-pledges?page=3",
       expect.anything()
+    );
+  });
+});
+
+describe("fetchCitizenPage", () => {
+  it("fetches the public citizen page without cookies", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(""));
+
+    await fetchCitizenPage("Some Pilot");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/en/citizens/Some%20Pilot",
+      { method: "GET", credentials: "omit", cache: "no-store" }
+    );
+  });
+});
+
+describe("updateBio", () => {
+  it("posts the bio to the profile settings field", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+
+    await updateBio("my-token", "Hello");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/api/settings/UpdateField",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          pageId: "my_profile",
+          fieldId: "biography",
+          value: "Hello",
+        }),
+      })
     );
   });
 });
