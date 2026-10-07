@@ -18,7 +18,9 @@ import {
   hasPendingChanges,
   isAccessDenied,
   parseDraftField,
+  tokenOnPage,
 } from "./org";
+import { appendToken, removeAppendedToken } from "./tokens";
 import {
   BioTooLongError,
   VERIFICATION_TOKEN_PATTERN,
@@ -161,10 +163,60 @@ async function storePricing(token: string) {
   };
 }
 
+// Requests for the same org (or the same bio) wait for each other: a remove
+// sent while a slow write is still out would read the draft before the write
+// lands, find nothing, and leave the token the write then publishes.
+const queues = new Map<string, Promise<unknown>>();
+
+function oneAtATime<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const run = (queues.get(key) ?? Promise.resolve()).then(task, task);
+  const settled = run.catch(() => undefined);
+  queues.set(key, settled);
+  void settled.then(() => {
+    if (queues.get(key) === settled) queues.delete(key);
+  });
+
+  return run;
+}
+
+// The draft as it will be published, and the org page as it is now.
+async function comparedPages(rsiToken: string, sid: string) {
+  const [preview, live] = await Promise.all([
+    fetchOrgAdminPage(rsiToken, sid, "preview"),
+    fetchOrgPage(sid),
+  ]);
+
+  return {
+    previewHtml: preview.ok ? await preview.text() : null,
+    liveHtml: live.ok ? await live.text() : null,
+  };
+}
+
+async function orgPages(rsiToken: string, sid: string) {
+  const [content, compared] = await Promise.all([
+    fetchOrgAdminPage(rsiToken, sid, "content"),
+    comparedPages(rsiToken, sid),
+  ]);
+
+  return { content, ...compared };
+}
+
+async function draftField(rsiToken: string, sid: string) {
+  const content = await fetchOrgAdminPage(rsiToken, sid, "content");
+
+  return content.ok
+    ? parseDraftField(await content.text(), ORG_VERIFICATION_FIELD)
+    : null;
+}
+
 // Writes the token into the org's history and publishes it, for the org the
 // signed-in account can edit. Only while nothing else waits in the org's
 // draft: publishing takes the whole draft live, another officer's half-done
 // edit included.
+//
+// Saving and publishing are decided apart, from the draft and from the live
+// page: a run that saved but failed to publish is finished by the next one
+// instead of found "already done".
 async function verifyOrg(
   action: OrgVerifyAction,
   sid: unknown,
@@ -181,62 +233,96 @@ async function verifyOrg(
     return { code: 400, action, error: "Invalid SID" };
   }
 
-  const content = await fetchOrgAdminPage(rsiToken, sid, "content");
-  if (!content.ok) {
-    return { code: content.status, action, error: "Org unreadable", payload: { sid } };
-  }
+  // `changed` on a failure: the token may sit in the draft now, so the page
+  // that asked should still have it taken out.
+  const failed = (code: number, error: string, changed = false) => ({
+    code,
+    action,
+    error,
+    payload: { sid, changed },
+  });
+
+  const { content, previewHtml, liveHtml } = await orgPages(rsiToken, sid);
+  if (!content.ok) return failed(content.status, "Org unreadable");
 
   const contentHtml = await content.text();
-  if (isAccessDenied(contentHtml)) {
-    return { code: 403, action, error: "No rights for this org", payload: { sid } };
-  }
+  if (isAccessDenied(contentHtml)) return failed(403, "No rights for this org");
 
   const draft = parseDraftField(contentHtml, ORG_VERIFICATION_FIELD);
-  if (draft === null) {
-    return { code: 422, action, error: "Org unreadable", payload: { sid } };
-  }
-
-  const [preview, live] = await Promise.all([
-    fetchOrgAdminPage(rsiToken, sid, "preview"),
-    fetchOrgPage(sid),
-  ]);
   const pending =
-    preview.ok && live.ok
-      ? hasPendingChanges(await preview.text(), await live.text())
-      : null;
-  if (pending === null) {
-    return { code: 422, action, error: "Org unreadable", payload: { sid } };
+    previewHtml && liveHtml ? hasPendingChanges(previewHtml, liveHtml) : null;
+  if (draft === null || pending === null || !liveHtml) {
+    return failed(422, "Org unreadable");
   }
-  if (pending) {
-    return { code: 409, action, error: "Unpublished changes", payload: { sid } };
+  if (pending) return failed(409, "Unpublished changes");
+
+  const onPage = tokenOnPage(liveHtml, verificationToken, ORG_VERIFICATION_FIELD);
+  if (!onPage) return failed(422, "Org unreadable");
+
+  const writing = action === "org-verify-write";
+  const { text: next, changed: needsSave } = writing
+    ? appendToken(draft, verificationToken)
+    : removeAppendedToken(draft, verificationToken);
+
+  // Somewhere other than where the extension puts it: not the extension's to
+  // take out, and still public.
+  if (
+    !writing &&
+    ((!needsSave && next.includes(verificationToken)) || onPage.elsewhere)
+  ) {
+    return failed(409, "Token placed by hand");
   }
 
-  let next: string;
-  let changed: boolean;
-  if (action === "org-verify-write") {
-    ({ bio: next, added: changed } = withToken(draft, verificationToken, Infinity));
-  } else {
-    ({ bio: next, removed: changed } = withoutToken(draft, verificationToken));
-  }
+  const needsPublish = writing !== onPage.inField;
 
-  if (changed) {
-    for (const request of [
-      () => saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, next),
-      () => publishOrgDraft(rsiToken, sid),
-    ]) {
-      const response = await request();
-      if (!response.ok || !(await reportsSuccess(response))) {
-        return {
-          code: response.ok ? 502 : response.status,
-          action,
-          error: "Org update failed",
-          payload: { sid },
-        };
-      }
+  const succeeded = async (response: Response) =>
+    response.ok && (await reportsSuccess(response));
+
+  if (needsSave) {
+    const saved = await saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, next);
+    if (!(await succeeded(saved))) {
+      return failed(saved.ok ? 502 : saved.status, "Org update failed");
     }
   }
 
-  return { code: 200, action, payload: { sid, changed } };
+  if (needsPublish) {
+    // Another officer can save a draft while this one runs. Asked again right
+    // before publishing, so their edit is not what goes live with the token.
+    const again = await comparedPages(rsiToken, sid);
+    const stillAlone =
+      again.previewHtml && again.liveHtml
+        ? hasPendingChanges(again.previewHtml, again.liveHtml) === false
+        : false;
+
+    if (!stillAlone) {
+      // A remove that cannot publish leaves the draft without the token, which
+      // is where it should end up anyway; the live page still shows it.
+      if (!writing || !needsSave) return failed(409, "Unpublished changes");
+
+      // Put back only what this request wrote: an officer who saved the
+      // history since keeps their edit, and the token with it.
+      const current = await draftField(rsiToken, sid);
+      if (current !== next) return failed(409, "Unpublished changes", true);
+
+      const restored = await saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, draft);
+      if (!(await succeeded(restored))) {
+        return failed(restored.ok ? 502 : restored.status, "Draft left with token", true);
+      }
+
+      return failed(409, "Unpublished changes");
+    }
+
+    const published = await publishOrgDraft(rsiToken, sid);
+    if (!(await succeeded(published))) {
+      return failed(published.ok ? 502 : published.status, "Org update failed");
+    }
+  }
+
+  return {
+    code: 200,
+    action,
+    payload: { sid, changed: needsSave || needsPublish },
+  };
 }
 
 export async function onMessage(
@@ -269,7 +355,9 @@ export async function onMessage(
         JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
       );
     } else {
-      const result = await verifyBio(message.action, message.token, token).catch(
+      const result = await oneAtATime("bio", () =>
+        verifyBio(message.action, message.token, token)
+      ).catch(
         (error) => {
           console.error("FY Sync: Bio update failed", error);
 
@@ -291,11 +379,8 @@ export async function onMessage(
         JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
       );
     } else {
-      const result = await verifyOrg(
-        message.action,
-        message.sid,
-        message.token,
-        token
+      const result = await oneAtATime(`org:${message.sid}`, () =>
+        verifyOrg(message.action, message.sid, message.token, token)
       ).catch((error) => {
         console.error("FY Sync: Org update failed", error);
 

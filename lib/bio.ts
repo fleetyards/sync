@@ -1,6 +1,8 @@
+import { appendToken, removeAppendedToken } from "./tokens";
+
 export const BIO_MAX_LENGTH = 1024;
 
-export const VERIFICATION_TOKEN_PATTERN = /^FLEETYARDS-[A-Z0-9]{10}$/;
+export { VERIFICATION_TOKEN_PATTERN } from "./tokens";
 
 const ENTITIES: Record<string, string> = {
   amp: "&",
@@ -72,28 +74,15 @@ export function parseBio(html: string): string | null {
 
 export class BioTooLongError extends Error {}
 
-export function withToken(
-  bio: string,
-  token: string,
-  maxLength = BIO_MAX_LENGTH
-) {
-  if (bio.includes(token)) return { bio, added: false };
+export function withToken(bio: string, token: string) {
+  const { text, changed } = appendToken(bio, token);
+  if (text.length > BIO_MAX_LENGTH) throw new BioTooLongError();
 
-  const next = bio ? `${bio}\n\n${token}` : token;
-  if (next.length > maxLength) throw new BioTooLongError();
-
-  return { bio: next, added: true };
+  return { bio: text, added: changed };
 }
 
-// Only the token as withToken appended it: one the user put elsewhere in their
-// bio themselves is theirs to remove.
 export function withoutToken(bio: string, token: string) {
-  if (bio === token) return { bio: "", removed: true };
+  const { text, changed } = removeAppendedToken(bio, token);
 
-  const suffix = `\n\n${token}`;
-  if (bio.endsWith(suffix)) {
-    return { bio: bio.slice(0, -suffix.length), removed: true };
-  }
-
-  return { bio, removed: false };
+  return { bio: text, removed: changed };
 }
