@@ -17,7 +17,7 @@ describe("onMessage", () => {
       "1.2.3"
     );
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result).toEqual({
       code: 200,
       action: "health",
@@ -43,7 +43,7 @@ describe("onMessage", () => {
 
     await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken, "1.0.0");
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(200);
     expect(result.action).toBe("identify");
     expect(result.payload.handle).toBe("TestUser");
@@ -55,7 +55,7 @@ describe("onMessage", () => {
 
     await onMessage(JSON.stringify({ action: "identify" }), sendResponse, getToken, "1.0.0");
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(400);
     expect(result.error).toContain("Token not found");
   });
@@ -77,7 +77,7 @@ describe("onMessage", () => {
       "1.0.0"
     );
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(200);
     expect(result.action).toBe("sync");
     expect(result.payload).toBe("<html>pledge data</html>");
@@ -94,7 +94,7 @@ describe("onMessage", () => {
 
     await onMessage(JSON.stringify({ action: "sync" }), sendResponse, getToken, "1.0.0");
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(400);
     expect(result.error).toContain("Token not found");
   });
@@ -116,7 +116,7 @@ describe("onMessage", () => {
       "1.0.0"
     );
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(200);
     expect(result.action).toBe("syncBuyback");
     expect(result.payload).toBe("<html>buyback data</html>");
@@ -138,7 +138,7 @@ describe("onMessage", () => {
       "1.0.0"
     );
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(400);
     expect(result.error).toContain("Token not found");
   });
@@ -149,7 +149,7 @@ describe("onMessage", () => {
 
     await onMessage(JSON.stringify({ action: "unknown" }), sendResponse, getToken, "1.0.0");
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(500);
     expect(result.error).toBe("Unknown Action");
   });
@@ -160,7 +160,7 @@ describe("onMessage", () => {
 
     await onMessage("", sendResponse, getToken, "1.0.0");
 
-    const result = JSON.parse(sendResponse.mock.calls[0][0]);
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(500);
     expect(result.error).toBe("Unknown Action");
   });
