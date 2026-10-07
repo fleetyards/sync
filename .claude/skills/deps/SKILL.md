@@ -115,11 +115,21 @@ Long-open PRs are worth a look — a bump that has sat for months (`#98`, `#104`
 
 ### 4. Merge the safe ones
 
+`gh pr merge` does **not** work here: with a merge queue on `main` it goes through the auto-merge path and fails with `Auto merge is not allowed for this repository`. Enqueue the PR directly instead:
+
 ```bash
-gh pr merge <number> --repo fleetyards/sync --squash
+id=$(gh pr view <number> --repo fleetyards/sync --json id --jq .id)
+gh api graphql -f id="$id" \
+  -f query='mutation($id:ID!){enqueuePullRequest(input:{pullRequestId:$id}){mergeQueueEntry{position state}}}'
 ```
 
-Because `main` has a merge queue, this enqueues the PR rather than merging it on the spot. Confirm it landed rather than assuming.
+The queue squashes using the ruleset's strategy. Confirm it landed rather than assuming — a PR that loses a lockfile race is dropped from the queue with `merge_conflict`:
+
+```bash
+gh api graphql -f query='{repository(owner:"fleetyards",name:"sync"){pullRequest(number:<number>){state isInMergeQueue timelineItems(last:2,itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT]){nodes{... on RemovedFromMergeQueueEvent{reason}}}}}}'
+```
+
+npm bumps all touch `pnpm-lock.yaml`, so enqueuing several at once usually knocks all but the first out. Enqueue npm PRs one at a time; after each lands, wait for Dependabot to rebase the next (it does this on its own for conflicts), re-check Gate B, then enqueue. Actions bumps don't conflict and can go in together.
 
 Branches are not auto-deleted here, so tidy up after a successful merge if the user wants:
 
