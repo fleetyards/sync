@@ -27,6 +27,13 @@ export const SUPPORTED_ACTIONS = [
 
 type VerifyAction = "verify-write" | "verify-remove";
 
+// RSI's APIs answer some refusals with a 200 and `success: 0` in the body.
+async function reportsSuccess(response: Response) {
+  const body = await response.json().catch(() => undefined);
+
+  return !(body && typeof body === "object" && "success" in body && !body.success);
+}
+
 // Writes into the signed-in account's own bio, and only ever a FleetYards
 // verification token: the page that asks can be any script on a FleetYards
 // origin, so it gets no say over what else ends up there.
@@ -73,9 +80,9 @@ async function verifyBio(
 
   if (changed) {
     const response = await updateBio(rsiToken, next);
-    if (!response.ok) {
+    if (!response.ok || !(await reportsSuccess(response))) {
       return {
-        code: response.status,
+        code: response.ok ? 502 : response.status,
         action,
         error: "Bio update failed",
         payload: { handle },
@@ -113,15 +120,15 @@ export async function onMessage(
     const token = await getToken();
     if (!token) {
       sendResponse(
-        JSON.stringify({
-          code: 400,
-          action: message.action,
-          error: "Token not found" + message?.action,
-        })
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
       );
     } else {
       const result = await verifyBio(message.action, message.token, token).catch(
-        () => ({ code: 500, action: message.action, error: "Bio update failed" })
+        (error) => {
+          console.error("FY Sync: Bio update failed", error);
+
+          return { code: 500, action: message.action, error: "Bio update failed" };
+        }
       );
 
       sendResponse(JSON.stringify(result));

@@ -267,6 +267,39 @@ describe("onMessage verify actions", () => {
     expect(result.code).toBe(403);
   });
 
+  it("treats a 200 that says it failed as a failed update", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const target = String(url);
+      if (target.endsWith("/api/spectrum/auth/identify")) {
+        return json({ data: { member: { nickname: "Pilot" } } });
+      }
+      if (target.endsWith("/en/citizens/Pilot")) {
+        return new Response(citizenPage("Hello"), { status: 200 });
+      }
+      return json({ success: 0, msg: "ErrCsrf" });
+    });
+
+    const result = await send({ action: "verify-write", token: verificationToken });
+
+    expect(result.code).not.toBe(200);
+  });
+
+  it("answers 401 without an RSI session cookie", async () => {
+    const sendResponse = vi.fn();
+
+    await onMessage(
+      JSON.stringify({ action: "verify-write", token: verificationToken }),
+      sendResponse,
+      vi.fn().mockResolvedValue(null),
+      "1.2.3"
+    );
+
+    expect(JSON.parse(sendResponse.mock.calls[0][0])).toMatchObject({
+      code: 401,
+      action: "verify-write",
+    });
+  });
+
   it("answers 500 when RSI cannot be reached", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("offline"));
 
