@@ -2,6 +2,10 @@ import {
   identify,
   fetchPledges,
   fetchBuybacks,
+  fetchBuybackDetail,
+  fetchUpgradePrices,
+  MAX_UPGRADE_PRICES,
+  type UpgradePair,
   fetchCitizenPage,
   updateBio,
 } from "./rsi";
@@ -21,6 +25,8 @@ export const SUPPORTED_ACTIONS = [
   "identify",
   "sync",
   "syncBuyback",
+  "syncBuybackDetail",
+  "syncBuybackUpgradePrices",
   "verify-write",
   "verify-remove",
 ] as const;
@@ -93,6 +99,68 @@ async function verifyBio(
   return { code: 200, action, payload: { handle, changed } };
 }
 
+// The page asking can be any script on a FleetYards origin, so it only ever
+// names a pledge by its numeric id and never a URL of its own.
+const PLEDGE_ID_PATTERN = /^\d{1,12}$/;
+
+function isPositiveInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) > 0;
+}
+
+function upgradePairs(value: unknown): UpgradePair[] | null {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > MAX_UPGRADE_PRICES
+  ) {
+    return null;
+  }
+
+  const pairs = value.map((pair) =>
+    isPositiveInteger(pair?.from) && isPositiveInteger(pair?.to)
+      ? { from: pair.from, to: pair.to }
+      : null
+  );
+
+  return pairs.every((pair) => pair) ? (pairs as UpgradePair[]) : null;
+}
+
+type GraphqlResult = {
+  data?: {
+    app?: { pricing?: { currencyCode?: string } };
+    price?: { amount?: number };
+  } | null;
+};
+
+// One answer per operation, in order: the currency first, then one price per
+// pair. A pair RSI does not know fails on its own and comes back as `null`.
+async function upgradePrices(token: string, pairs: UpgradePair[]) {
+  const response = await fetchUpgradePrices(token, pairs);
+  if (!response.ok) {
+    return { code: response.status, error: "Upgrade prices failed" };
+  }
+
+  const results: unknown = await response.json().catch(() => undefined);
+  const currency = Array.isArray(results)
+    ? (results as GraphqlResult[])[0]?.data?.app?.pricing?.currencyCode
+    : undefined;
+  if (!currency) {
+    return { code: 502, error: "Upgrade prices unreadable" };
+  }
+
+  return {
+    code: 200,
+    payload: {
+      currency,
+      prices: pairs.map((pair, index) => ({
+        ...pair,
+        amount:
+          (results as GraphqlResult[])[index + 1]?.data?.price?.amount ?? null,
+      })),
+    },
+  };
+}
+
 export async function onMessage(
   rawMessage: string,
   sendResponse: SendResponse,
@@ -158,6 +226,51 @@ export async function onMessage(
           },
         })
       );
+    }
+  } else if (message?.action == "syncBuybackDetail") {
+    const id = String(message.id ?? "");
+    const token = await getToken();
+
+    if (!PLEDGE_ID_PATTERN.test(id)) {
+      sendResponse(
+        JSON.stringify({ code: 400, action: message.action, error: "Invalid pledge id" })
+      );
+    } else if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, id, error: "No RSI session" })
+      );
+    } else {
+      const response = await fetchBuybackDetail(token, id);
+
+      sendResponse(
+        JSON.stringify({
+          code: response.status,
+          action: message.action,
+          id,
+          payload: await response.text(),
+        })
+      );
+    }
+  } else if (message?.action == "syncBuybackUpgradePrices") {
+    const pairs = upgradePairs(message.upgrades);
+    const token = await getToken();
+
+    if (!pairs) {
+      sendResponse(
+        JSON.stringify({ code: 400, action: message.action, error: "Invalid upgrades" })
+      );
+    } else if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      const result = await upgradePrices(token, pairs).catch((error) => {
+        console.error("FY Sync: Upgrade prices failed", error);
+
+        return { code: 500, error: "Upgrade prices failed" };
+      });
+
+      sendResponse(JSON.stringify({ action: message.action, ...result }));
     }
   } else if (message?.action == "sync" || message?.action == "syncBuyback") {
     const token = await getToken();

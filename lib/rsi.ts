@@ -54,6 +54,43 @@ export function fetchBuybacks(token: string, page = 1) {
   return fetchAccountPage("buy-back-pledges", token, page);
 }
 
+export function fetchBuybackDetail(token: string, id: string) {
+  return fetch(`${RSI_BASE_URL}/pledge/buyback/${id}`, {
+    method: "GET",
+    headers: {
+      ...HTML_PAGE_HEADERS,
+      "X-Rsi-Token": token,
+    },
+    credentials: "include",
+  });
+}
+
+export type UpgradePair = { from: number; to: number };
+
+// RSI's upgrade API refuses a batch of more than five operations, and one of
+// them asks for the currency the prices are in.
+export const MAX_UPGRADE_PRICES = 4;
+
+const UPGRADE_PRICE_QUERY =
+  "query getPrice($from: Int!, $to: Int!) { price(from: $from, to: $to) { amount } }";
+
+const PRICING_QUERY = "query pricing { app { pricing { currencyCode } } }";
+
+export function fetchUpgradePrices(token: string, pairs: UpgradePair[]) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/pledge-store/api/upgrade/v2/graphql`,
+    payload: [
+      { operationName: "pricing", variables: {}, query: PRICING_QUERY },
+      ...pairs.map((pair) => ({
+        operationName: "getPrice",
+        variables: pair,
+        query: UPGRADE_PRICE_QUERY,
+      })),
+    ],
+    rsiToken: token,
+  });
+}
+
 export function fetchCitizenPage(handle: string) {
   return fetch(`${RSI_BASE_URL}/en/citizens/${encodeURIComponent(handle)}`, {
     method: "GET",
