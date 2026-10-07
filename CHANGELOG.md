@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/fleetyards/sync/compare/v1.4.0...v1.4.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **ci:** pass release notes to Discord notify step via env ([c41a1de](https://github.com/fleetyards/sync/commit/c41a1de21b306c511aa23bcdaece381add4b80df))
+
 ## [1.4.0](https://github.com/fleetyards/sync/compare/v1.3.0...v1.4.0) (2026-10-07)
 
 
