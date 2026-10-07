@@ -72,8 +72,10 @@ Majors go to the report for a human, even with green CI.
 ```bash
 gh pr view <number> --repo fleetyards/sync \
   --json statusCheckRollup \
-  --jq '[.statusCheckRollup[] | select(.conclusion != "SUCCESS" and .conclusion != "SKIPPED" and .conclusion != "NEUTRAL")] | map("\(.name): \(.conclusion // .status)") | .[]'
+  --jq '[.statusCheckRollup[] | {n: (.name // .context), s: (.conclusion // .state // .status)} | select(.s != "SUCCESS" and .s != "SKIPPED" and .s != "NEUTRAL")] | map("\(.n): \(.s)") | .[]'
 ```
+
+The rollup mixes check runs (`name`/`conclusion`) with commit status contexts such as CodeRabbit (`context`/`state`), so both shapes need reading — otherwise a passing status context shows up as `null: null`.
 
 Empty output means green. A `PENDING` check means come back later — auto-merge is off here, so there is no way to queue it up in advance.
 
