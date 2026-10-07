@@ -83,12 +83,21 @@ const ALLOWED_ORIGINS = [
   "http://fleetyards.test",
 ] as const;
 
+const LOCAL_WORKTREE_ORIGIN = /^http:\/\/localhost:8\d{3}$/;
+
+function isAllowedOrigin(origin: string) {
+  return (
+    ALLOWED_ORIGINS.includes(origin as any) ||
+    LOCAL_WORKTREE_ORIGIN.test(origin)
+  );
+}
+
 export function handleResponse(
   response: any,
   origin: string,
   postMessage: (data: any, targetOrigin: string) => void
 ) {
-  if (ALLOWED_ORIGINS.includes(origin as any)) {
+  if (isAllowedOrigin(origin)) {
     postMessage(
       {
         direction: "fy-sync",

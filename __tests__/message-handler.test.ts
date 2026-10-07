@@ -182,6 +182,24 @@ describe("handleResponse", () => {
     );
   });
 
+  it("posts message for localhost worktree origin", () => {
+    const postMessage = vi.fn();
+    handleResponse({ data: "test" }, "http://localhost:8123", postMessage);
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { direction: "fy-sync", message: { data: "test" } },
+      "http://localhost:8123"
+    );
+  });
+
+  it("does not post message for localhost outside the 8xxx range", () => {
+    const postMessage = vi.fn();
+    handleResponse({ data: "test" }, "http://localhost:3000", postMessage);
+    handleResponse({ data: "test" }, "http://localhost:80000", postMessage);
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
   it("does not post message for unknown origin", () => {
     const postMessage = vi.fn();
     handleResponse({ data: "test" }, "https://evil.com", postMessage);
