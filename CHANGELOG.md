@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/fleetyards/sync/compare/v1.3.0...v1.4.0) (2026-10-07)
+
+
+### Features
+
+* org-verify-write and org-verify-remove actions for fleet verification ([#165](https://github.com/fleetyards/sync/issues/165)) ([42e4302](https://github.com/fleetyards/sync/commit/42e43025f11bf29f7786b0b1499b5655ebfe7e93))
+* read buy-back detail pages and the account's store pricing ([#164](https://github.com/fleetyards/sync/issues/164)) ([2feaf1a](https://github.com/fleetyards/sync/commit/2feaf1a241e7b6df5e8e5b0015a0f123d64f0c4a))
+
+
+### Bug Fixes
+
+* **org:** finish interrupted verifications and compare drafts by markup ([#167](https://github.com/fleetyards/sync/issues/167)) ([64d0d6d](https://github.com/fleetyards/sync/commit/64d0d6dada5f2dd447283b9ef84dc0514665e311))
+
 ## [1.3.0](https://github.com/fleetyards/sync/compare/v1.2.6...v1.3.0) (2026-10-07)
 
 
