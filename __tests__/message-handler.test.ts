@@ -29,7 +29,6 @@ describe("onMessage", () => {
           "sync",
           "syncBuyback",
           "syncBuybackDetail",
-          "syncBuybackUpgradePrices",
           "verify-write",
           "verify-remove",
         ],
@@ -184,76 +183,6 @@ describe("onMessage", () => {
     }
   );
 
-  it("reads upgrade prices with their currency", async () => {
-    const sendResponse = vi.fn();
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          { data: { app: { pricing: { currencyCode: "EUR" } } } },
-          { data: { price: { amount: 2618 } } },
-          { errors: [{ message: "Ship not found " }], data: null },
-        ]),
-        { status: 200 }
-      )
-    );
-
-    await onMessage(
-      JSON.stringify({
-        action: "syncBuybackUpgradePrices",
-        upgrades: [
-          { from: 308, to: 19461 },
-          { from: 1, to: 999999 },
-        ],
-      }),
-      sendResponse,
-      vi.fn().mockResolvedValue("test-token"),
-      "1.0.0"
-    );
-
-    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
-    expect(result).toEqual({
-      code: 200,
-      action: "syncBuybackUpgradePrices",
-      payload: {
-        currency: "EUR",
-        prices: [
-          { from: 308, to: 19461, amount: 2618 },
-          { from: 1, to: 999999, amount: null },
-        ],
-      },
-    });
-
-    const [url, init] = vi.mocked(globalThis.fetch).mock.calls[0]!;
-    expect(url).toBe(
-      "https://robertsspaceindustries.com/pledge-store/api/upgrade/v2/graphql"
-    );
-    expect(JSON.parse(init!.body as string)).toHaveLength(3);
-  });
-
-  it("fails upgrade prices RSI answers without a currency", async () => {
-    const sendResponse = vi.fn();
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ errors: [{ message: "nope" }] }), {
-        status: 200,
-      })
-    );
-
-    await onMessage(
-      JSON.stringify({
-        action: "syncBuybackUpgradePrices",
-        upgrades: [{ from: 308, to: 19461 }],
-      }),
-      sendResponse,
-      vi.fn().mockResolvedValue("test-token"),
-      "1.0.0"
-    );
-
-    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
-    expect(result.code).toBe(502);
-  });
-
   it("answers a buy-back detail request that fails", async () => {
     const sendResponse = vi.fn();
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("offline"));
@@ -273,58 +202,6 @@ describe("onMessage", () => {
       id: "1000001",
       error: "Buy-back detail failed",
     });
-  });
-
-  it("fails an upgrade price batch with fewer answers than pairs", async () => {
-    const sendResponse = vi.fn();
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          { data: { app: { pricing: { currencyCode: "EUR" } } } },
-          { data: { price: { amount: 2618 } } },
-        ]),
-        { status: 200 }
-      )
-    );
-
-    await onMessage(
-      JSON.stringify({
-        action: "syncBuybackUpgradePrices",
-        upgrades: [
-          { from: 308, to: 19461 },
-          { from: 47, to: 19337 },
-        ],
-      }),
-      sendResponse,
-      vi.fn().mockResolvedValue("test-token"),
-      "1.0.0"
-    );
-
-    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
-    expect(result.code).toBe(502);
-  });
-
-  it.each([
-    [[]],
-    [[{ from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }]],
-    [[{ from: "1", to: 2 }]],
-    [[{ from: 1, to: -2 }]],
-    ["308"],
-  ])("refuses upgrades %j", async (upgrades) => {
-    const sendResponse = vi.fn();
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-
-    await onMessage(
-      JSON.stringify({ action: "syncBuybackUpgradePrices", upgrades }),
-      sendResponse,
-      vi.fn().mockResolvedValue("test-token"),
-      "1.0.0"
-    );
-
-    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
-    expect(result.code).toBe(400);
-    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("responds to syncBuyback action without token", async () => {
