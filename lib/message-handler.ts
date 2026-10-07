@@ -140,10 +140,13 @@ async function upgradePrices(token: string, pairs: UpgradePair[]) {
     return { code: response.status, error: "Upgrade prices failed" };
   }
 
+  // A pair RSI does not price still answers, with `data: null`; a batch with
+  // fewer answers than questions is not read at all.
   const results: unknown = await response.json().catch(() => undefined);
-  const currency = Array.isArray(results)
-    ? (results as GraphqlResult[])[0]?.data?.app?.pricing?.currencyCode
-    : undefined;
+  const currency =
+    Array.isArray(results) && results.length === pairs.length + 1
+      ? (results as GraphqlResult[])[0]?.data?.app?.pricing?.currencyCode
+      : undefined;
   if (!currency) {
     return { code: 502, error: "Upgrade prices unreadable" };
   }
@@ -240,16 +243,18 @@ export async function onMessage(
         JSON.stringify({ code: 401, action: message.action, id, error: "No RSI session" })
       );
     } else {
-      const response = await fetchBuybackDetail(token, id);
-
-      sendResponse(
-        JSON.stringify({
+      const result = await fetchBuybackDetail(token, id)
+        .then(async (response) => ({
           code: response.status,
-          action: message.action,
-          id,
           payload: await response.text(),
-        })
-      );
+        }))
+        .catch((error) => {
+          console.error("FY Sync: Buy-back detail failed", error);
+
+          return { code: 500, error: "Buy-back detail failed" };
+        });
+
+      sendResponse(JSON.stringify({ action: message.action, id, ...result }));
     }
   } else if (message?.action == "syncBuybackUpgradePrices") {
     const pairs = upgradePairs(message.upgrades);

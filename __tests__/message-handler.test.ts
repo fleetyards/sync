@@ -254,6 +254,57 @@ describe("onMessage", () => {
     expect(result.code).toBe(502);
   });
 
+  it("answers a buy-back detail request that fails", async () => {
+    const sendResponse = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("offline"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuybackDetail", id: "1000001" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result).toEqual({
+      code: 500,
+      action: "syncBuybackDetail",
+      id: "1000001",
+      error: "Buy-back detail failed",
+    });
+  });
+
+  it("fails an upgrade price batch with fewer answers than pairs", async () => {
+    const sendResponse = vi.fn();
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          { data: { app: { pricing: { currencyCode: "EUR" } } } },
+          { data: { price: { amount: 2618 } } },
+        ]),
+        { status: 200 }
+      )
+    );
+
+    await onMessage(
+      JSON.stringify({
+        action: "syncBuybackUpgradePrices",
+        upgrades: [
+          { from: 308, to: 19461 },
+          { from: 47, to: 19337 },
+        ],
+      }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(502);
+  });
+
   it.each([
     [[]],
     [[{ from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }, { from: 1, to: 2 }]],
