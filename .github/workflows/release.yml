@@ -226,11 +226,12 @@ jobs:
     environment: Live
     env:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      TAG_NAME: ${{ github.event.release.tag_name }}
+      RELEASE_URL: ${{ github.event.release.html_url }}
+      RELEASE_NOTES: ${{ github.event.release.body }}
     steps:
       - run: |
-          TAG_NAME="${{ github.event.release.tag_name }}"
-          RELEASE_URL="${{ github.event.release.html_url }}"
-          RELEASE_BODY=$(echo '${{ toJSON(github.event.release.body) }}' | jq -r '.' | head -c 1500)
+          RELEASE_BODY=$(printf '%s' "$RELEASE_NOTES" | head -c 1500)
 
           curl -sSf -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \
