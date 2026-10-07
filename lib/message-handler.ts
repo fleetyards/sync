@@ -3,6 +3,8 @@ import {
   fetchPledges,
   fetchBuybacks,
   fetchBuybackDetail,
+  setStoreAuthToken,
+  fetchStorePricing,
   fetchCitizenPage,
   updateBio,
 } from "./rsi";
@@ -23,6 +25,7 @@ export const SUPPORTED_ACTIONS = [
   "sync",
   "syncBuyback",
   "syncBuybackDetail",
+  "syncBuybackPricing",
   "verify-write",
   "verify-remove",
 ] as const;
@@ -98,6 +101,51 @@ async function verifyBio(
 // The page asking can be any script on a FleetYards origin, so it only ever
 // names a pledge by its numeric id and never a URL of its own.
 const PLEDGE_ID_PATTERN = /^\d{1,12}$/;
+
+type StorePricing = {
+  currencyCode: string;
+  exchangeRate: number;
+  taxRate: number;
+  isTaxInclusive: boolean;
+};
+
+function isStorePricing(value: any): value is StorePricing {
+  return (
+    typeof value?.currencyCode === "string" &&
+    Number.isFinite(value?.exchangeRate) &&
+    Number.isFinite(value?.taxRate) &&
+    typeof value?.isTaxInclusive === "boolean"
+  );
+}
+
+// The currency, exchange rate and tax RSI converts the account's prices with,
+// so FleetYards can turn a buy-back price back into RSI's own USD figure.
+async function storePricing(token: string) {
+  const auth = await setStoreAuthToken(token);
+  if (!auth.ok || !(await reportsSuccess(auth))) {
+    return { code: auth.ok ? 502 : auth.status, error: "Store token failed" };
+  }
+
+  const response = await fetchStorePricing(token);
+  if (!response.ok) {
+    return { code: response.status, error: "Store pricing failed" };
+  }
+
+  const results: any = await response.json().catch(() => undefined);
+  const pricing = Array.isArray(results)
+    ? results[0]?.data?.app?.pricing
+    : undefined;
+  if (!isStorePricing(pricing)) {
+    return { code: 502, error: "Store pricing unreadable" };
+  }
+
+  const { currencyCode, exchangeRate, taxRate, isTaxInclusive } = pricing;
+
+  return {
+    code: 200,
+    payload: { currencyCode, exchangeRate, taxRate, isTaxInclusive },
+  };
+}
 
 export async function onMessage(
   rawMessage: string,
@@ -190,6 +238,22 @@ export async function onMessage(
         });
 
       sendResponse(JSON.stringify({ action: message.action, id, ...result }));
+    }
+  } else if (message?.action == "syncBuybackPricing") {
+    const token = await getToken();
+
+    if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      const result = await storePricing(token).catch((error) => {
+        console.error("FY Sync: Store pricing failed", error);
+
+        return { code: 500, error: "Store pricing failed" };
+      });
+
+      sendResponse(JSON.stringify({ action: message.action, ...result }));
     }
   } else if (message?.action == "sync" || message?.action == "syncBuyback") {
     const token = await getToken();

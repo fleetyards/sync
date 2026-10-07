@@ -29,6 +29,7 @@ describe("onMessage", () => {
           "sync",
           "syncBuyback",
           "syncBuybackDetail",
+          "syncBuybackPricing",
           "verify-write",
           "verify-remove",
         ],
@@ -202,6 +203,103 @@ describe("onMessage", () => {
       id: "1000001",
       error: "Buy-back detail failed",
     });
+  });
+
+  it("reads the account's store pricing after asking for a store token", async () => {
+    const sendResponse = vi.fn();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: 1, data: "token" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              data: {
+                app: {
+                  pricing: {
+                    currencyCode: "EUR",
+                    exchangeRate: 8800,
+                    taxRate: 1900,
+                    isTaxInclusive: true,
+                  },
+                },
+              },
+            },
+          ]),
+          { status: 200 }
+        )
+      );
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuybackPricing" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result).toEqual({
+      code: 200,
+      action: "syncBuybackPricing",
+      payload: {
+        currencyCode: "EUR",
+        exchangeRate: 8800,
+        taxRate: 1900,
+        isTaxInclusive: true,
+      },
+    });
+    expect(fetchSpy.mock.calls.map(([url]) => url)).toEqual([
+      "https://robertsspaceindustries.com/api/account/v2/setAuthToken",
+      "https://robertsspaceindustries.com/pledge-store/api/upgrade/v2/graphql",
+    ]);
+  });
+
+  // Without a store token RSI prices in USD whatever the account uses, so
+  // reading on would convert other currencies with the wrong rate.
+  it("reads no pricing when RSI refuses the store token", async () => {
+    const sendResponse = vi.fn();
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ success: 0 }), { status: 200 })
+      );
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuybackPricing" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(502);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails store pricing RSI answers without its rates", async () => {
+    const sendResponse = vi.fn();
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: 1 }), { status: 200 })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ data: { app: { pricing: { currencyCode: "EUR" } } } }]),
+          { status: 200 }
+        )
+      );
+
+    await onMessage(
+      JSON.stringify({ action: "syncBuybackPricing" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(502);
   });
 
   it("responds to syncBuyback action without token", async () => {

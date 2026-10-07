@@ -65,6 +65,32 @@ export function fetchBuybackDetail(token: string, id: string) {
   });
 }
 
+// The store prices in the account's currency once it has a store token, which
+// RSI's own pages ask for the same way before they show a price. Without one
+// it answers in USD whatever the account uses.
+export function setStoreAuthToken(token: string) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/api/account/v2/setAuthToken`,
+    payload: {},
+    rsiToken: token,
+  });
+}
+
+export function fetchStorePricing(token: string) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/pledge-store/api/upgrade/v2/graphql`,
+    payload: [
+      {
+        operationName: "pricing",
+        variables: {},
+        query:
+          "query pricing { app { pricing { currencyCode exchangeRate taxRate isTaxInclusive } } }",
+      },
+    ],
+    rsiToken: token,
+  });
+}
+
 export function fetchCitizenPage(handle: string) {
   return fetch(`${RSI_BASE_URL}/en/citizens/${encodeURIComponent(handle)}`, {
     method: "GET",
