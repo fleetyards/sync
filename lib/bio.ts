@@ -13,7 +13,7 @@ const ENTITIES: Record<string, string> = {
 
 // Null for an entity it does not know: written back as it stands, it would
 // show up in the bio as literal text.
-function decodeEntities(text: string): string | null {
+export function decodeEntities(text: string): string | null {
   let unknown = false;
 
   const decoded = text.replace(
@@ -72,11 +72,15 @@ export function parseBio(html: string): string | null {
 
 export class BioTooLongError extends Error {}
 
-export function withToken(bio: string, token: string) {
+export function withToken(
+  bio: string,
+  token: string,
+  maxLength = BIO_MAX_LENGTH
+) {
   if (bio.includes(token)) return { bio, added: false };
 
   const next = bio ? `${bio}\n\n${token}` : token;
-  if (next.length > BIO_MAX_LENGTH) throw new BioTooLongError();
+  if (next.length > maxLength) throw new BioTooLongError();
 
   return { bio: next, added: true };
 }

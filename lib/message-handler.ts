@@ -7,7 +7,18 @@ import {
   fetchStorePricing,
   fetchCitizenPage,
   updateBio,
+  fetchOrgAdminPage,
+  fetchOrgPage,
+  saveOrgDraft,
+  publishOrgDraft,
 } from "./rsi";
+import {
+  ORG_VERIFICATION_FIELD,
+  SID_PATTERN,
+  hasPendingChanges,
+  isAccessDenied,
+  parseDraftField,
+} from "./org";
 import {
   BioTooLongError,
   VERIFICATION_TOKEN_PATTERN,
@@ -28,9 +39,12 @@ export const SUPPORTED_ACTIONS = [
   "syncBuybackPricing",
   "verify-write",
   "verify-remove",
+  "org-verify-write",
+  "org-verify-remove",
 ] as const;
 
 type VerifyAction = "verify-write" | "verify-remove";
+type OrgVerifyAction = "org-verify-write" | "org-verify-remove";
 
 // RSI's APIs answer some refusals with a 200 and `success: 0` in the body.
 async function reportsSuccess(response: Response) {
@@ -147,6 +161,84 @@ async function storePricing(token: string) {
   };
 }
 
+// Writes the token into the org's history and publishes it, for the org the
+// signed-in account can edit. Only while nothing else waits in the org's
+// draft: publishing takes the whole draft live, another officer's half-done
+// edit included.
+async function verifyOrg(
+  action: OrgVerifyAction,
+  sid: unknown,
+  verificationToken: unknown,
+  rsiToken: string
+) {
+  if (
+    typeof verificationToken !== "string" ||
+    !VERIFICATION_TOKEN_PATTERN.test(verificationToken)
+  ) {
+    return { code: 400, action, error: "Invalid verification token" };
+  }
+  if (typeof sid !== "string" || !SID_PATTERN.test(sid)) {
+    return { code: 400, action, error: "Invalid SID" };
+  }
+
+  const content = await fetchOrgAdminPage(rsiToken, sid, "content");
+  if (!content.ok) {
+    return { code: content.status, action, error: "Org unreadable", payload: { sid } };
+  }
+
+  const contentHtml = await content.text();
+  if (isAccessDenied(contentHtml)) {
+    return { code: 403, action, error: "No rights for this org", payload: { sid } };
+  }
+
+  const draft = parseDraftField(contentHtml, ORG_VERIFICATION_FIELD);
+  if (draft === null) {
+    return { code: 422, action, error: "Org unreadable", payload: { sid } };
+  }
+
+  const [preview, live] = await Promise.all([
+    fetchOrgAdminPage(rsiToken, sid, "preview"),
+    fetchOrgPage(sid),
+  ]);
+  const pending =
+    preview.ok && live.ok
+      ? hasPendingChanges(await preview.text(), await live.text())
+      : null;
+  if (pending === null) {
+    return { code: 422, action, error: "Org unreadable", payload: { sid } };
+  }
+  if (pending) {
+    return { code: 409, action, error: "Unpublished changes", payload: { sid } };
+  }
+
+  let next: string;
+  let changed: boolean;
+  if (action === "org-verify-write") {
+    ({ bio: next, added: changed } = withToken(draft, verificationToken, Infinity));
+  } else {
+    ({ bio: next, removed: changed } = withoutToken(draft, verificationToken));
+  }
+
+  if (changed) {
+    for (const request of [
+      () => saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, next),
+      () => publishOrgDraft(rsiToken, sid),
+    ]) {
+      const response = await request();
+      if (!response.ok || !(await reportsSuccess(response))) {
+        return {
+          code: response.ok ? 502 : response.status,
+          action,
+          error: "Org update failed",
+          payload: { sid },
+        };
+      }
+    }
+  }
+
+  return { code: 200, action, payload: { sid, changed } };
+}
+
 export async function onMessage(
   rawMessage: string,
   sendResponse: SendResponse,
@@ -184,6 +276,31 @@ export async function onMessage(
           return { code: 500, action: message.action, error: "Bio update failed" };
         }
       );
+
+      sendResponse(JSON.stringify(result));
+    }
+  } else if (
+    message?.action == "org-verify-write" ||
+    message?.action == "org-verify-remove"
+  ) {
+    console.info("FY Sync: Updating Org");
+
+    const token = await getToken();
+    if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      const result = await verifyOrg(
+        message.action,
+        message.sid,
+        message.token,
+        token
+      ).catch((error) => {
+        console.error("FY Sync: Org update failed", error);
+
+        return { code: 500, action: message.action, error: "Org update failed" };
+      });
 
       sendResponse(JSON.stringify(result));
     }

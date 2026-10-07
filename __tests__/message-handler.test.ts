@@ -32,6 +32,8 @@ describe("onMessage", () => {
           "syncBuybackPricing",
           "verify-write",
           "verify-remove",
+          "org-verify-write",
+          "org-verify-remove",
         ],
       },
     });
@@ -501,6 +503,137 @@ describe("onMessage verify actions", () => {
 
     expect(result.payload).toEqual({ handle: "Pilot", changed: false });
     expect(writtenBio(fetch)).toBeUndefined();
+  });
+});
+
+describe("onMessage org verify actions", () => {
+  const verificationToken = "FLEETYARDS-ABCDEFGHIJ";
+
+  const orgPage = (history: string, manifesto = "Ours.") =>
+    `<div class="markitup-text"><p>Intro.</p></div><div class="markitup-text">${history}</div><div class="markitup-text"><p>${manifesto}</p></div>`;
+
+  const contentPage = (history: string) =>
+    `<title>Description - Admin</title><textarea name="history">\n${history}</textarea>`;
+
+  type Rsi = {
+    content?: string;
+    preview?: string;
+    live?: string;
+    save?: unknown;
+    publish?: unknown;
+  };
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status });
+
+  const mockRsi = ({
+    content = contentPage("Our board."),
+    preview = orgPage("<p>Our board.</p>"),
+    live = orgPage("<p>Our board.</p>"),
+    save = { success: 1 },
+    publish = { success: 1 },
+  }: Rsi = {}) =>
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const target = String(url);
+      if (target.endsWith("/en/orgs/MARU/admin/content")) return new Response(content);
+      if (target.endsWith("/en/orgs/MARU/admin/preview")) return new Response(preview);
+      if (target.endsWith("/en/orgs/MARU")) return new Response(live);
+      if (target.endsWith("/api/orgs/saveDraft")) return json(save);
+      if (target.endsWith("/api/orgs/publishDraft")) return json(publish);
+      throw new Error(`unexpected ${target}`);
+    });
+
+  const send = async (message: object) => {
+    const sendResponse = vi.fn();
+    await onMessage(
+      JSON.stringify(message),
+      sendResponse,
+      vi.fn().mockResolvedValue("rsi-token"),
+      "1.2.3"
+    );
+    return JSON.parse(sendResponse.mock.calls[0]![0]);
+  };
+
+  const posted = (fetch: ReturnType<typeof mockRsi>, path: string) =>
+    fetch.mock.calls
+      .filter(([url]) => String(url).endsWith(path))
+      .map(([, init]) => JSON.parse(String(init?.body)));
+
+  it("appends the token to the history and publishes it", async () => {
+    const fetch = mockRsi();
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result).toEqual({
+      code: 200,
+      action: "org-verify-write",
+      payload: { sid: "MARU", changed: true },
+    });
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([
+      { symbol: "MARU", history: `Our board.\n\n${verificationToken}` },
+    ]);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([{ symbol: "MARU" }]);
+  });
+
+  it("answers 403 for an account without rights on the org", async () => {
+    const fetch = mockRsi({ content: "<title>Access denied - Roberts Space Industries</title>" });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(403);
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([]);
+  });
+
+  it("answers 409 while another edit waits in the draft", async () => {
+    const fetch = mockRsi({ preview: orgPage("<p>Our board.</p>", "Half done.") });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(409);
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([]);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([]);
+  });
+
+  it("answers 422 for org pages it cannot read", async () => {
+    const fetch = mockRsi({ preview: "<html></html>" });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(422);
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([]);
+  });
+
+  it("does not publish when saving the draft was refused", async () => {
+    const fetch = mockRsi({ save: { success: 0, msg: "ErrCsrf" } });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(502);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([]);
+  });
+
+  it("refuses an SID that is not one", async () => {
+    const fetch = vi.spyOn(globalThis, "fetch");
+
+    const result = await send({ action: "org-verify-write", sid: "../x", token: verificationToken });
+
+    expect(result.code).toBe(400);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("removes the token it appended and publishes again", async () => {
+    const fetch = mockRsi({
+      content: contentPage(`Our board.\n\n${verificationToken}`),
+      live: orgPage(`<p>Our board.</p><p>${verificationToken}</p>`),
+    });
+
+    const result = await send({ action: "org-verify-remove", sid: "MARU", token: verificationToken });
+
+    expect(result.payload).toEqual({ sid: "MARU", changed: true });
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([
+      { symbol: "MARU", history: "Our board." },
+    ]);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toHaveLength(1);
   });
 });
 
