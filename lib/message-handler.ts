@@ -3,17 +3,31 @@ import { identify, fetchPledges, fetchBuybacks } from "./rsi";
 type GetToken = () => Promise<string | null>;
 type SendResponse = (message: string) => void;
 
+export const SUPPORTED_ACTIONS = [
+  "health",
+  "identify",
+  "sync",
+  "syncBuyback",
+] as const;
+
 export async function onMessage(
   rawMessage: string,
   sendResponse: SendResponse,
-  getToken: GetToken
+  getToken: GetToken,
+  version: string
 ) {
   const message = JSON.parse(rawMessage || "{}");
 
   if (message?.action == "health") {
     console.info("FY Sync: Health check");
 
-    sendResponse(JSON.stringify({ code: 200, action: message.action }));
+    sendResponse(
+      JSON.stringify({
+        code: 200,
+        action: message.action,
+        payload: { version, actions: SUPPORTED_ACTIONS },
+      })
+    );
   } else if (message?.action == "identify") {
     console.info("FY Sync: Fetching Identity");
 
