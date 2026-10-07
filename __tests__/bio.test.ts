@@ -46,6 +46,32 @@ describe("parseBio", () => {
     expect(parseBio(page('see <a href="https://x.test">x</a>'))).toBeNull();
   });
 
+  it("reads CRLF line breaks as single newlines", () => {
+    expect(parseBio(page("First<br />\r\nSecond\r\nThird"))).toBe(
+      "First\nSecond\nThird"
+    );
+  });
+
+  it("refuses an entity it does not know", () => {
+    expect(parseBio(page("caf&eacute;"))).toBeNull();
+  });
+
+  it("refuses a code point out of range", () => {
+    expect(parseBio(page("&#x110000;"))).toBeNull();
+  });
+
+  it("refuses a bio entry whose markup changed", () => {
+    expect(
+      parseBio(
+        page().replace(
+          "</div>\n  </div>",
+          ""
+        ) +
+          '<div class="entry bio"><h4>Bio</h4><div class="value markdown">Mine</div></div>'
+      )
+    ).toBeNull();
+  });
+
   it("refuses a page that is not a citizen page", () => {
     expect(parseBio("<html>Not found</html>")).toBeNull();
   });

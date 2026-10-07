@@ -11,19 +11,36 @@ const ENTITIES: Record<string, string> = {
   nbsp: " ",
 };
 
-function decodeEntities(text: string) {
-  return text.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (entity, name: string) => {
-    if (name[0] === "#") {
-      const code =
-        name[1].toLowerCase() === "x"
-          ? parseInt(name.slice(2), 16)
-          : parseInt(name.slice(1), 10);
+// Null for an entity it does not know: written back as it stands, it would
+// show up in the bio as literal text.
+function decodeEntities(text: string): string | null {
+  let unknown = false;
 
-      return String.fromCodePoint(code);
+  const decoded = text.replace(
+    /&(#x[0-9a-f]+|#\d+|\w+);/gi,
+    (entity, name: string) => {
+      if (name[0] === "#") {
+        const code =
+          name[1].toLowerCase() === "x"
+            ? parseInt(name.slice(2), 16)
+            : parseInt(name.slice(1), 10);
+
+        if (code > 0x10ffff) {
+          unknown = true;
+          return entity;
+        }
+
+        return String.fromCodePoint(code);
+      }
+
+      const character = ENTITIES[name.toLowerCase()];
+      if (character === undefined) unknown = true;
+
+      return character ?? entity;
     }
+  );
 
-    return ENTITIES[name.toLowerCase()] ?? entity;
-  });
+  return unknown ? null : decoded;
 }
 
 // The settings API that writes the bio has no read counterpart we can call, so
@@ -34,12 +51,20 @@ function decodeEntities(text: string) {
 export function parseBio(html: string): string | null {
   if (!html.includes('<span class="label">Handle name</span>')) return null;
 
+  // Only a page without the bio entry at all has an empty bio. One with an
+  // entry this does not recognise is markup that changed, and reading it as
+  // empty would replace the user's whole bio with the token.
+  if (!html.includes('class="entry bio"')) return "";
+
   const entry = html.match(
     /<div class="entry bio">\s*<span class="label">[^<]*<\/span>\s*<div class="value">([\s\S]*?)<\/div>/
   );
-  if (!entry) return "";
+  if (!entry) return null;
 
-  const text = entry[1].trim().replace(/<br\s*\/?>\n?/g, "\n");
+  const text = entry[1]
+    .trim()
+    .replace(/<br\s*\/?>(\r?\n)?/g, "\n")
+    .replace(/\r\n?/g, "\n");
   if (/<[a-z/!]/i.test(text)) return null;
 
   return decodeEntities(text);
