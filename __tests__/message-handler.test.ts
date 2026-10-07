@@ -621,6 +621,99 @@ describe("onMessage org verify actions", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("publishes a token a failed run left in the draft", async () => {
+    const fetch = mockRsi({
+      content: contentPage(`Our board.\n\n${verificationToken}`),
+    });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.payload).toEqual({ sid: "MARU", changed: true });
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([]);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([{ symbol: "MARU" }]);
+  });
+
+  it("does nothing for a token already in the draft and live", async () => {
+    const fetch = mockRsi({
+      content: contentPage(`Our board.\n\n${verificationToken}`),
+      live: orgPage(`<p>Our board.</p><p>${verificationToken}</p>`),
+      preview: orgPage(`<p>Our board.</p><p>${verificationToken}</p>`),
+    });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.payload).toEqual({ sid: "MARU", changed: false });
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([]);
+  });
+
+  it("puts the draft back when another edit arrives before publishing", async () => {
+    let previewReads = 0;
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      const target = String(url);
+      if (target.endsWith("/admin/content")) return new Response(contentPage("Our board."));
+      if (target.endsWith("/admin/preview")) {
+        previewReads += 1;
+        return new Response(
+          previewReads === 1
+            ? orgPage("<p>Our board.</p>")
+            : orgPage("<p>Our board.</p>", "Someone else's draft.")
+        );
+      }
+      if (target.endsWith("/en/orgs/MARU")) return new Response(orgPage("<p>Our board.</p>"));
+      return json({ success: 1 });
+    });
+
+    const result = await send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(409);
+    expect(posted(fetch, "/api/orgs/saveDraft")).toEqual([
+      { symbol: "MARU", history: `Our board.\n\n${verificationToken}` },
+      { symbol: "MARU", history: "Our board." },
+    ]);
+    expect(posted(fetch, "/api/orgs/publishDraft")).toEqual([]);
+  });
+
+  it("answers 409 for a token it did not place", async () => {
+    mockRsi({
+      content: contentPage(`${verificationToken}\n\nOur board.`),
+      live: orgPage(`<p>${verificationToken}</p><p>Our board.</p>`),
+    });
+
+    const result = await send({ action: "org-verify-remove", sid: "MARU", token: verificationToken });
+
+    expect(result.code).toBe(409);
+  });
+
+  it("lets a remove wait for a write to the same org", async () => {
+    const order: string[] = [];
+    let releaseWrite: () => void = () => {};
+    let draft = "Our board.";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const target = String(url);
+      if (target.endsWith("/admin/content")) return new Response(contentPage(draft));
+      if (target.endsWith("/admin/preview")) return new Response(orgPage("<p>Our board.</p>"));
+      if (target.endsWith("/en/orgs/MARU")) return new Response(orgPage("<p>Our board.</p>"));
+      if (target.endsWith("/api/orgs/saveDraft")) {
+        const { history } = JSON.parse(String(init?.body));
+        order.push(history.includes(verificationToken) ? "save-token" : "save-clean");
+        if (history.includes(verificationToken)) {
+          await new Promise<void>((resolve) => (releaseWrite = resolve));
+        }
+        draft = history;
+      }
+      return json({ success: 1 });
+    });
+
+    const write = send({ action: "org-verify-write", sid: "MARU", token: verificationToken });
+    await vi.waitFor(() => expect(order).toEqual(["save-token"]));
+    const remove = send({ action: "org-verify-remove", sid: "MARU", token: verificationToken });
+    releaseWrite();
+    await write;
+    await remove;
+
+    expect(order).toEqual(["save-token", "save-clean"]);
+  });
+
   it("removes the token it appended and publishes again", async () => {
     const fetch = mockRsi({
       content: contentPage(`Our board.\n\n${verificationToken}`),
