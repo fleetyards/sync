@@ -53,3 +53,19 @@ export function fetchPledges(token: string, page = 1) {
 export function fetchBuybacks(token: string, page = 1) {
   return fetchAccountPage("buy-back-pledges", token, page);
 }
+
+export function fetchCitizenPage(handle: string) {
+  return fetch(`${RSI_BASE_URL}/en/citizens/${encodeURIComponent(handle)}`, {
+    method: "GET",
+    credentials: "omit",
+    cache: "no-store",
+  });
+}
+
+export function updateBio(token: string, bio: string) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/api/settings/UpdateField`,
+    payload: { pageId: "my_profile", fieldId: "biography", value: bio },
+    rsiToken: token,
+  });
+}

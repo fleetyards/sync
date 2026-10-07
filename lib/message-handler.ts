@@ -1,4 +1,17 @@
-import { identify, fetchPledges, fetchBuybacks } from "./rsi";
+import {
+  identify,
+  fetchPledges,
+  fetchBuybacks,
+  fetchCitizenPage,
+  updateBio,
+} from "./rsi";
+import {
+  BioTooLongError,
+  VERIFICATION_TOKEN_PATTERN,
+  parseBio,
+  withToken,
+  withoutToken,
+} from "./bio";
 
 type GetToken = () => Promise<string | null>;
 type SendResponse = (message: string) => void;
@@ -8,7 +21,77 @@ export const SUPPORTED_ACTIONS = [
   "identify",
   "sync",
   "syncBuyback",
+  "verify-write",
+  "verify-remove",
 ] as const;
+
+type VerifyAction = "verify-write" | "verify-remove";
+
+// RSI's APIs answer some refusals with a 200 and `success: 0` in the body.
+async function reportsSuccess(response: Response) {
+  const body = await response.json().catch(() => undefined);
+
+  return !(body && typeof body === "object" && "success" in body && !body.success);
+}
+
+// Writes into the signed-in account's own bio, and only ever a FleetYards
+// verification token: the page that asks can be any script on a FleetYards
+// origin, so it gets no say over what else ends up there.
+async function verifyBio(
+  action: VerifyAction,
+  verificationToken: unknown,
+  rsiToken: string
+) {
+  if (
+    typeof verificationToken !== "string" ||
+    !VERIFICATION_TOKEN_PATTERN.test(verificationToken)
+  ) {
+    return { code: 400, action, error: "Invalid verification token" };
+  }
+
+  const identity = await identify(rsiToken);
+  const handle: string | undefined = identity.ok
+    ? (await identity.json()).data?.member?.nickname
+    : undefined;
+  if (!handle) {
+    return { code: 401, action, error: "No RSI session" };
+  }
+
+  const page = await fetchCitizenPage(handle);
+  const bio = page.ok ? parseBio(await page.text()) : null;
+  if (bio === null) {
+    return { code: 422, action, error: "Bio unreadable", payload: { handle } };
+  }
+
+  let next: string;
+  let changed: boolean;
+  try {
+    if (action === "verify-write") {
+      ({ bio: next, added: changed } = withToken(bio, verificationToken));
+    } else {
+      ({ bio: next, removed: changed } = withoutToken(bio, verificationToken));
+    }
+  } catch (error) {
+    if (error instanceof BioTooLongError) {
+      return { code: 413, action, error: "Bio too long", payload: { handle } };
+    }
+    throw error;
+  }
+
+  if (changed) {
+    const response = await updateBio(rsiToken, next);
+    if (!response.ok || !(await reportsSuccess(response))) {
+      return {
+        code: response.ok ? 502 : response.status,
+        action,
+        error: "Bio update failed",
+        payload: { handle },
+      };
+    }
+  }
+
+  return { code: 200, action, payload: { handle, changed } };
+}
 
 export async function onMessage(
   rawMessage: string,
@@ -28,6 +111,28 @@ export async function onMessage(
         payload: { version, actions: SUPPORTED_ACTIONS },
       })
     );
+  } else if (
+    message?.action == "verify-write" ||
+    message?.action == "verify-remove"
+  ) {
+    console.info("FY Sync: Updating Bio");
+
+    const token = await getToken();
+    if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      const result = await verifyBio(message.action, message.token, token).catch(
+        (error) => {
+          console.error("FY Sync: Bio update failed", error);
+
+          return { code: 500, action: message.action, error: "Bio update failed" };
+        }
+      );
+
+      sendResponse(JSON.stringify(result));
+    }
   } else if (message?.action == "identify") {
     console.info("FY Sync: Fetching Identity");
 
