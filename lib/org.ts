@@ -57,11 +57,9 @@ function sectionOf(html: string, index: number) {
   return tab ? tab[1]! : "introduction";
 }
 
-// The org's text sections as rendered, by name: markup kept, so an image, a
-// link or formatting counts as a change too; every FleetYards token, the
-// paragraphs left empty by taking one out, and whitespace dropped. Null when
-// the page has none, which is markup this cannot read.
-export function contentSections(html: string): Map<string, string> | null {
+// Each org text section's inner markup as rendered, by name. Null when the
+// page has none, or a block never closes: markup this cannot read.
+function rawSections(html: string): Map<string, string> | null {
   const sections = new Map<string, string>();
 
   for (
@@ -72,17 +70,30 @@ export function contentSections(html: string): Map<string, string> | null {
     const inner = blockAt(html, index + BLOCK_START.length);
     if (inner === null) return null;
 
-    sections.set(
-      sectionOf(html, index),
+    sections.set(sectionOf(html, index), inner);
+  }
+
+  return sections.size > 0 ? sections : null;
+}
+
+// The org's text sections for comparing two renderings of the page: markup
+// kept, so an image, a link or formatting counts as a change too; every
+// FleetYards token, the paragraphs left empty by taking one out, and
+// whitespace dropped.
+export function contentSections(html: string): Map<string, string> | null {
+  const sections = rawSections(html);
+  if (!sections) return null;
+
+  return new Map(
+    [...sections].map(([name, inner]) => [
+      name,
       inner
         .replace(TOKEN_IN_MARKUP, "")
         .replace(/<p>\s*<\/p>/g, "")
         .replace(/\s+/g, " ")
-        .trim()
-    );
-  }
-
-  return sections.size > 0 ? sections : null;
+        .trim(),
+    ])
+  );
 }
 
 // Whether the org's draft holds changes besides FleetYards tokens: RSI
@@ -101,7 +112,23 @@ export function hasPendingChanges(
   );
 }
 
-// Whether a rendered org page shows the token, Textile's markup aside.
-export function pageShowsToken(html: string, token: string) {
-  return html.replace(/<[^>]*>/g, "").includes(token);
+// Where a rendered org page shows the token, Textile's markup aside: in the
+// section the extension writes, or anywhere else, which it never wrote and
+// cannot take out. Null for a page it cannot read.
+export function tokenOnPage(
+  html: string,
+  token: string,
+  field: string
+): { inField: boolean; elsewhere: boolean } | null {
+  const sections = rawSections(html);
+  if (!sections) return null;
+
+  const shows = (markup: string) => markup.replace(/<[^>]*>/g, "").includes(token);
+
+  return {
+    inField: shows(sections.get(field) ?? ""),
+    elsewhere: [...sections].some(
+      ([name, markup]) => name !== field && shows(markup)
+    ),
+  };
 }

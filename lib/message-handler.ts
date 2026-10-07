@@ -17,8 +17,8 @@ import {
   SID_PATTERN,
   hasPendingChanges,
   isAccessDenied,
-  pageShowsToken,
   parseDraftField,
+  tokenOnPage,
 } from "./org";
 import { appendToken, removeAppendedToken } from "./tokens";
 import {
@@ -179,18 +179,34 @@ function oneAtATime<T>(key: string, task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function orgPages(rsiToken: string, sid: string) {
-  const [content, preview, live] = await Promise.all([
-    fetchOrgAdminPage(rsiToken, sid, "content"),
+// The draft as it will be published, and the org page as it is now.
+async function comparedPages(rsiToken: string, sid: string) {
+  const [preview, live] = await Promise.all([
     fetchOrgAdminPage(rsiToken, sid, "preview"),
     fetchOrgPage(sid),
   ]);
 
   return {
-    content,
     previewHtml: preview.ok ? await preview.text() : null,
     liveHtml: live.ok ? await live.text() : null,
   };
+}
+
+async function orgPages(rsiToken: string, sid: string) {
+  const [content, compared] = await Promise.all([
+    fetchOrgAdminPage(rsiToken, sid, "content"),
+    comparedPages(rsiToken, sid),
+  ]);
+
+  return { content, ...compared };
+}
+
+async function draftField(rsiToken: string, sid: string) {
+  const content = await fetchOrgAdminPage(rsiToken, sid, "content");
+
+  return content.ok
+    ? parseDraftField(await content.text(), ORG_VERIFICATION_FIELD)
+    : null;
 }
 
 // Writes the token into the org's history and publishes it, for the org the
@@ -217,11 +233,13 @@ async function verifyOrg(
     return { code: 400, action, error: "Invalid SID" };
   }
 
-  const failed = (code: number, error: string) => ({
+  // `changed` on a failure: the token may sit in the draft now, so the page
+  // that asked should still have it taken out.
+  const failed = (code: number, error: string, changed = false) => ({
     code,
     action,
     error,
-    payload: { sid },
+    payload: { sid, changed },
   });
 
   const { content, previewHtml, liveHtml } = await orgPages(rsiToken, sid);
@@ -238,6 +256,9 @@ async function verifyOrg(
   }
   if (pending) return failed(409, "Unpublished changes");
 
+  const onPage = tokenOnPage(liveHtml, verificationToken, ORG_VERIFICATION_FIELD);
+  if (!onPage) return failed(422, "Org unreadable");
+
   const writing = action === "org-verify-write";
   const { text: next, changed: needsSave } = writing
     ? appendToken(draft, verificationToken)
@@ -245,11 +266,14 @@ async function verifyOrg(
 
   // Somewhere other than where the extension puts it: not the extension's to
   // take out, and still public.
-  if (!writing && !needsSave && next.includes(verificationToken)) {
+  if (
+    !writing &&
+    ((!needsSave && next.includes(verificationToken)) || onPage.elsewhere)
+  ) {
     return failed(409, "Token placed by hand");
   }
 
-  const needsPublish = writing !== pageShowsToken(liveHtml, verificationToken);
+  const needsPublish = writing !== onPage.inField;
 
   const succeeded = async (response: Response) =>
     response.ok && (await reportsSuccess(response));
@@ -264,16 +288,27 @@ async function verifyOrg(
   if (needsPublish) {
     // Another officer can save a draft while this one runs. Asked again right
     // before publishing, so their edit is not what goes live with the token.
-    const again = await orgPages(rsiToken, sid);
+    const again = await comparedPages(rsiToken, sid);
     const stillAlone =
       again.previewHtml && again.liveHtml
         ? hasPendingChanges(again.previewHtml, again.liveHtml) === false
         : false;
 
     if (!stillAlone) {
-      if (needsSave) {
-        await saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, draft);
+      // A remove that cannot publish leaves the draft without the token, which
+      // is where it should end up anyway; the live page still shows it.
+      if (!writing || !needsSave) return failed(409, "Unpublished changes");
+
+      // Put back only what this request wrote: an officer who saved the
+      // history since keeps their edit, and the token with it.
+      const current = await draftField(rsiToken, sid);
+      if (current !== next) return failed(409, "Unpublished changes", true);
+
+      const restored = await saveOrgDraft(rsiToken, sid, ORG_VERIFICATION_FIELD, draft);
+      if (!(await succeeded(restored))) {
+        return failed(restored.ok ? 502 : restored.status, "Draft left with token", true);
       }
+
       return failed(409, "Unpublished changes");
     }
 

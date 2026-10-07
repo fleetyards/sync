@@ -3,8 +3,8 @@ import {
   contentSections,
   hasPendingChanges,
   isAccessDenied,
-  pageShowsToken,
   parseDraftField,
+  tokenOnPage,
 } from "@/lib/org";
 
 // Trimmed from a live org page.
@@ -127,17 +127,26 @@ describe("hasPendingChanges", () => {
   });
 });
 
-describe("pageShowsToken", () => {
-  it("finds a token Textile split with a span", () => {
+describe("tokenOnPage", () => {
+  const token = "FLEETYARDS-ABCDEFGHIJ";
+
+  it("finds a token Textile split with a span in the history", () => {
     expect(
-      pageShowsToken(
-        '<p><span class="caps">FLEETYARDS</span>-ABCDEFGHIJ</p>',
-        "FLEETYARDS-ABCDEFGHIJ"
+      tokenOnPage(
+        orgPage('<p>Our board.</p><p><span class="caps">FLEETYARDS</span>-ABCDEFGHIJ</p>'),
+        token,
+        "history"
       )
-    ).toBe(true);
+    ).toEqual({ inField: true, elsewhere: false });
   });
 
-  it("finds nothing on a page without it", () => {
-    expect(pageShowsToken("<p>Our board.</p>", "FLEETYARDS-ABCDEFGHIJ")).toBe(false);
+  it("tells a token in another section apart", () => {
+    expect(
+      tokenOnPage(orgPage("<p>Our board.</p>", token), token, "history")
+    ).toEqual({ inField: false, elsewhere: true });
+  });
+
+  it("refuses a page it cannot read", () => {
+    expect(tokenOnPage("<html></html>", token, "history")).toBeNull();
   });
 });
