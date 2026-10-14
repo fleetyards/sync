@@ -170,6 +170,8 @@ jobs:
           VERSION: ${{ needs.build.outputs.version }}
           RELEASE_NOTE: ${{ github.event.release.body }}
         run: |
+          set -euo pipefail
+
           # Generate JWT token
           JWT=$(node -e "
             const crypto = require('crypto');
@@ -191,34 +193,52 @@ jobs:
 
           # Upload addon
           echo "Uploading addon..."
-          UPLOAD_RESP=$(curl -sSf -X POST "${BASE}/addons/upload/" \
+          if ! UPLOAD_RESP=$(curl --silent --show-error --fail-with-body -X POST "${BASE}/addons/upload/" \
             -H "${AUTH}" \
             -F "upload=@fleetyards-sync-${VERSION}-firefox.zip" \
-            -F "channel=listed")
-          UUID=$(echo "${UPLOAD_RESP}" | jq -r '.uuid')
+            -F "channel=listed"); then
+            echo "${UPLOAD_RESP}"
+            exit 1
+          fi
+          UUID=$(echo "${UPLOAD_RESP}" | jq -er '.uuid')
           echo "Upload UUID: ${UUID}"
 
           # Wait for processing
           for i in $(seq 1 30); do
             sleep 2
-            STATUS=$(curl -sS "${BASE}/addons/upload/${UUID}/" -H "${AUTH}" | jq -r '.processed')
-            if [ "${STATUS}" = "true" ]; then
+            if ! STATUS=$(curl --silent --show-error --fail-with-body "${BASE}/addons/upload/${UUID}/" -H "${AUTH}"); then
+              echo "${STATUS}"
+              exit 1
+            fi
+            if echo "${STATUS}" | jq -e '.processed == true' > /dev/null; then
               echo "Upload processed"
               break
             fi
             echo "Waiting for processing... (${i}/30)"
           done
 
-          # Create version with upload, source, and release notes
+          if ! echo "${STATUS}" | jq -e '.processed == true and .valid == true' > /dev/null; then
+            echo "Firefox upload validation failed or timed out"
+            echo "${STATUS}" | jq .
+            exit 1
+          fi
+
+          # Source files use multipart; translated release notes require JSON.
           echo "Creating version..."
-          curl -sSf -X POST "${BASE}/addons/addon/${ADDON_ID}/versions/" \
+          curl --silent --show-error --fail-with-body -X POST "${BASE}/addons/addon/${ADDON_ID}/versions/" \
             -H "${AUTH}" \
             -F "upload=${UUID}" \
             -F "source=@fleetyards-sync-${VERSION}-sources.zip" \
-            -F "release_notes={\"en-US\":$(echo "${RELEASE_NOTE}" | jq -Rs '.')}" \
             | jq .
 
-          echo "Published version ${VERSION} to Firefox Add-ons"
+          echo "Updating release notes..."
+          curl --silent --show-error --fail-with-body -X PATCH "${BASE}/addons/addon/${ADDON_ID}/versions/${VERSION}/" \
+            -H "${AUTH}" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n --arg notes "${RELEASE_NOTE}" '{release_notes: {"en-US": $notes}}')" \
+            | jq .
+
+          echo "Submitted version ${VERSION} to Firefox Add-ons for review"
 
   notify-discord:
     runs-on: ubuntu-latest
