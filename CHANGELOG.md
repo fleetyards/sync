@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/fleetyards/sync/compare/v1.4.0...v1.4.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **ci:** pass release notes to Discord notify step via env ([c41a1de](https://github.com/fleetyards/sync/commit/c41a1de21b306c511aa23bcdaece381add4b80df))
+* **firefox:** correct publishing and resolve validation warnings ([#169](https://github.com/fleetyards/sync/issues/169)) ([aa6df77](https://github.com/fleetyards/sync/commit/aa6df772e892e0ebc5f09c418c620f4c5c4319e2))
+
 ## [1.4.0](https://github.com/fleetyards/sync/compare/v1.3.0...v1.4.0) (2026-10-07)
 
 
