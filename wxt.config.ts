@@ -1,8 +1,10 @@
-import { defineConfig, version } from "wxt";
+import { defineConfig } from "wxt";
+import { firefoxVueConfig } from "./build/firefox-vue";
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ["@wxt-dev/module-vue"],
+  vite: ({ browser }) => (browser === "firefox" ? firefoxVueConfig() : {}),
   manifest: {
     homepage_url: "https://fleetyards.net",
     permissions: ["cookies"],
