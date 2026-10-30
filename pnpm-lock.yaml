@@ -14,7 +14,7 @@ importers:
     devDependencies:
       '@wxt-dev/module-vue':
         specifier: ^1.0.2
-        version: 1.0.3(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))(vue@3.5.44(typescript@6.0.3))(wxt@0.21.4(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)))
+        version: 1.0.3(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))(vue@3.5.44(typescript@6.0.3))(wxt@0.21.5(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -25,13 +25,13 @@ importers:
         specifier: ^3.3.13
         version: 3.3.13(typescript@6.0.3)
       wxt:
-        specifier: ^0.21.4
-        version: 0.21.4(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))
+        specifier: ^0.21.5
+        version: 0.21.5(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))
 
 packages:
 
-  '@1natsu/wait-element@4.1.2':
-    resolution: {integrity: sha512-qWxSJD+Q5b8bKOvESFifvfZ92DuMsY+03SBNjTO34ipJLP6mZ9yK4bQz/vlh48aEQXoJfaZBqUwKL5BdI5iiWw==}
+  '@1natsu/wait-element@5.0.0':
+    resolution: {integrity: sha512-OY5MEgiBNTfpNJvLn1yVYil2HcSfiJfSh3T3urmO96/mlxvm+frDZxZ1ngT0HO3F9usoyNPd0SnEE0SqrVaaEQ==}
 
   '@aklinker1/rollup-plugin-visualizer@5.12.0':
     resolution: {integrity: sha512-X24LvEGw6UFmy0lpGJDmXsMyBD58XmX1bbwsaMLhNoM+UMQfQ3b2RtC+nz4b/NoRK5r6QJSKJHBNVeUdwqybaQ==}
@@ -600,14 +600,6 @@ packages:
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
 
-  dotenv-expand@13.0.0:
-    resolution: {integrity: sha512-aBfBS8eYIeXmpHI9ThIlA7/WLq+SLt18iXUZhb52rW89QLKQFoIpPG1bPeewoPZsTyjSSO3T7234FBVUM1V2rA==}
-    engines: {node: '>=12'}
-
-  dotenv@17.4.0:
-    resolution: {integrity: sha512-kCKF62fwtzwYm0IGBNjRUjtJgMfGapII+FslMHIjMR5KTnwEmBmWLDRSnc3XSNP8bNy34tekgQyDT0hr7pERRQ==}
-    engines: {node: '>=12'}
-
   dotenv@17.4.2:
     resolution: {integrity: sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==}
     engines: {node: '>=12'}
@@ -814,8 +806,9 @@ packages:
   magicast@0.5.2:
     resolution: {integrity: sha512-E3ZJh4J3S9KfwdjZhe2afj6R9lGIN5Pher1pF39UGrXRqq/VDaGVIGN13BjHd2u8B61hArAGOnso7nBOouW3TQ==}
 
-  many-keys-map@2.0.1:
-    resolution: {integrity: sha512-DHnZAD4phTbZ+qnJdjoNEVU1NecYoSdbOOoVmTDH46AuxDkEVh3MxTVpXq10GtcTC6mndN9dkv1rNfpjRcLnOw==}
+  many-keys-map@3.0.3:
+    resolution: {integrity: sha512-1DiZmDHPXMBgMRjeUtHy1q1VYmeJscHxhIAexX9z/zjRMP80+0ETuPfssi8z+kMY4DwUgsKuHqpjxgmeA9gBNA==}
+    engines: {node: '>=18'}
 
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
@@ -1091,8 +1084,8 @@ packages:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}
     engines: {node: '>=10'}
 
-  wxt@0.21.4:
-    resolution: {integrity: sha512-iyVMTXb37BQAbsPHCuPzrK3ZxnO9pZmvbKl7VJWIHe3RG40On2NyP2FOjArtOITO96plEYnh3o+iUlRp9qE90w==}
+  wxt@0.21.5:
+    resolution: {integrity: sha512-naPKDK3LlU0M2LFJO3udw8ZEAB7DVQCGo26wllvSJQRVd3VaL9kiChjP8zWiVqm851uYkQ5pVI51hA5wjssO4g==}
     engines: {bun: '>=1.2.0', node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -1122,10 +1115,10 @@ packages:
 
 snapshots:
 
-  '@1natsu/wait-element@4.1.2':
+  '@1natsu/wait-element@5.0.0':
     dependencies:
       defu: 6.1.6
-      many-keys-map: 2.0.1
+      many-keys-map: 3.0.3
 
   '@aklinker1/rollup-plugin-visualizer@5.12.0(rollup@4.53.3)':
     dependencies:
@@ -1472,10 +1465,10 @@ snapshots:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
 
-  '@wxt-dev/module-vue@1.0.3(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))(vue@3.5.44(typescript@6.0.3))(wxt@0.21.4(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)))':
+  '@wxt-dev/module-vue@1.0.3(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))(vue@3.5.44(typescript@6.0.3))(wxt@0.21.5(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)))':
     dependencies:
       '@vitejs/plugin-vue': 6.0.2(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))(vue@3.5.44(typescript@6.0.3))
-      wxt: 0.21.4(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))
+      wxt: 0.21.5(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0))
     transitivePeerDependencies:
       - vite
       - vue
@@ -1509,7 +1502,7 @@ snapshots:
       chokidar: 5.0.0
       confbox: 0.2.4
       defu: 6.1.6
-      dotenv: 17.4.0
+      dotenv: 17.4.2
       exsolve: 1.0.8
       giget: 3.2.0
       jiti: 2.6.1
@@ -1591,12 +1584,6 @@ snapshots:
       dom-serializer: 2.0.0
       domelementtype: 2.3.0
       domhandler: 5.0.3
-
-  dotenv-expand@13.0.0:
-    dependencies:
-      dotenv: 17.4.2
-
-  dotenv@17.4.0: {}
 
   dotenv@17.4.2: {}
 
@@ -1767,11 +1754,11 @@ snapshots:
 
   magicast@0.5.2:
     dependencies:
-      '@babel/parser': 7.29.8
+      '@babel/parser': 7.29.9
       '@babel/types': 7.29.8
-      source-map-js: 1.2.1
+      source-map-js: 1.2.2
 
-  many-keys-map@2.0.1: {}
+  many-keys-map@3.0.3: {}
 
   mlly@1.8.2:
     dependencies:
@@ -2020,9 +2007,9 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
 
-  wxt@0.21.4(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)):
+  wxt@0.21.5(rollup@4.53.3)(typescript@6.0.3)(vite@7.3.6(@types/node@25.5.2)(jiti@2.6.1)(lightningcss@1.32.0)):
     dependencies:
-      '@1natsu/wait-element': 4.1.2
+      '@1natsu/wait-element': 5.0.0
       '@aklinker1/rollup-plugin-visualizer': 5.12.0(rollup@4.53.3)
       '@aklinker1/zero-zip': 1.0.1
       '@topcli/prompts': 4.0.0
@@ -2036,7 +2023,6 @@ snapshots:
       chokidar: 5.0.0
       consola: 3.4.2
       defu: 6.1.6
-      dotenv-expand: 13.0.0
       filesize: 11.0.25
       giget: 3.2.0
       hookable: 6.1.0
