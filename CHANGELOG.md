@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.1](https://github.com/fleetyards/sync/compare/v1.4.0...v1.4.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **ci:** pass release notes to Discord notify step via env ([c41a1de](https://github.com/fleetyards/sync/commit/c41a1de21b306c511aa23bcdaece381add4b80df))
+* **firefox:** correct publishing and resolve validation warnings ([#169](https://github.com/fleetyards/sync/issues/169)) ([aa6df77](https://github.com/fleetyards/sync/commit/aa6df772e892e0ebc5f09c418c620f4c5c4319e2))
+
+
+### Chores
+
+* **deps-dev:** bump vitest from 5.0.3 to 5.0.5 ([#173](https://github.com/fleetyards/sync/issues/173)) ([dce9c22](https://github.com/fleetyards/sync/commit/dce9c2206179bad32072c54555f41821a8eadb03))
+* **deps-dev:** bump vue-tsc from 3.3.12 to 3.3.13 ([#170](https://github.com/fleetyards/sync/issues/170)) ([03641e6](https://github.com/fleetyards/sync/commit/03641e60d6c9f13251c5f950c4e124cd733618a0))
+* **deps-dev:** bump wxt from 0.21.4 to 0.21.5 ([#174](https://github.com/fleetyards/sync/issues/174)) ([311ef08](https://github.com/fleetyards/sync/commit/311ef08a30a43e1421dd581237a4f8d6cff1f2c4))
+* **deps:** bump vue from 3.5.43 to 3.5.44 ([#172](https://github.com/fleetyards/sync/issues/172)) ([5f3a204](https://github.com/fleetyards/sync/commit/5f3a204ce8629d9d00ea3434c41e74052d9a36e5))
+
 ## [1.4.0](https://github.com/fleetyards/sync/compare/v1.3.0...v1.4.0) (2026-10-07)
 
 
