@@ -102,7 +102,7 @@ export function fetchStoreCredit(token: string) {
       operationName: "credit",
       variables: {},
       query:
-        "query credit { customer { ledgerCredit: ledger(ledgerCode: credit) { amount { value currency { code } } } } }",
+        'query credit { customer { ledgerCredit: ledger(ledgerCode: "credit") { amount { value currency { code } } } } }',
     },
     rsiToken: token,
   });

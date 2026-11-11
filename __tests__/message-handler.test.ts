@@ -337,7 +337,9 @@ describe("onMessage", () => {
     });
     const [url, init] = fetchSpy.mock.calls[0]!;
     expect(url).toBe("https://robertsspaceindustries.com/graphql");
-    expect(JSON.parse(String(init?.body)).operationName).toBe("credit");
+    const body = JSON.parse(String(init?.body));
+    expect(body.operationName).toBe("credit");
+    expect(body.query).toContain('ledger(ledgerCode: "credit")');
   });
 
   it("reads no store credit RSI answers without an amount", async () => {
