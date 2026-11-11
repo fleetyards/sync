@@ -5,6 +5,7 @@ import {
   fetchBuybackDetail,
   setStoreAuthToken,
   fetchStorePricing,
+  fetchStoreCredit,
   fetchCitizenPage,
   updateBio,
   fetchOrgAdminPage,
@@ -39,6 +40,7 @@ export const SUPPORTED_ACTIONS = [
   "syncBuyback",
   "syncBuybackDetail",
   "syncBuybackPricing",
+  "syncStoreCredit",
   "verify-write",
   "verify-remove",
   "org-verify-write",
@@ -161,6 +163,24 @@ async function storePricing(token: string) {
     code: 200,
     payload: { currencyCode, exchangeRate, taxRate, isTaxInclusive },
   };
+}
+
+// The store credit on the account, in USD, as RSI's account panel shows it.
+// RSI keeps it in cents, and only in USD.
+async function storeCredit(token: string) {
+  const response = await fetchStoreCredit(token);
+  if (!response.ok) {
+    return { code: response.status, error: "Store credit failed" };
+  }
+
+  const body: any = await response.json().catch(() => undefined);
+  const amount = body?.data?.customer?.ledgerCredit?.amount;
+  const cents = amount?.value;
+  if (!Number.isInteger(cents) || cents < 0 || amount?.currency?.code !== "USD") {
+    return { code: 502, error: "Store credit unreadable" };
+  }
+
+  return { code: 200, payload: { credit: cents / 100 } };
 }
 
 // Requests for the same org (or the same bio) wait for each other: a remove
@@ -453,6 +473,22 @@ export async function onMessage(
         console.error("FY Sync: Store pricing failed", error);
 
         return { code: 500, error: "Store pricing failed" };
+      });
+
+      sendResponse(JSON.stringify({ action: message.action, ...result }));
+    }
+  } else if (message?.action == "syncStoreCredit") {
+    const token = await getToken();
+
+    if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      const result = await storeCredit(token).catch((error) => {
+        console.error("FY Sync: Store credit failed", error);
+
+        return { code: 500, error: "Store credit failed" };
       });
 
       sendResponse(JSON.stringify({ action: message.action, ...result }));

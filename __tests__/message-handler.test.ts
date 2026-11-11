@@ -30,6 +30,7 @@ describe("onMessage", () => {
           "syncBuyback",
           "syncBuybackDetail",
           "syncBuybackPricing",
+          "syncStoreCredit",
           "verify-write",
           "verify-remove",
           "org-verify-write",
@@ -302,6 +303,74 @@ describe("onMessage", () => {
 
     const result = JSON.parse(sendResponse.mock.calls[0]![0]);
     expect(result.code).toBe(502);
+  });
+
+  it("reads the store credit in USD from RSI's account query", async () => {
+    const sendResponse = vi.fn();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            customer: {
+              ledgerCredit: {
+                amount: { value: 84956, currency: { code: "USD" } },
+              },
+            },
+          },
+        }),
+        { status: 200 }
+      )
+    );
+
+    await onMessage(
+      JSON.stringify({ action: "syncStoreCredit" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result).toEqual({
+      code: 200,
+      action: "syncStoreCredit",
+      payload: { credit: 849.56 },
+    });
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe("https://robertsspaceindustries.com/graphql");
+    expect(JSON.parse(String(init?.body)).operationName).toBe("credit");
+  });
+
+  it("reads no store credit RSI answers without an amount", async () => {
+    const sendResponse = vi.fn();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ data: { customer: null } }), { status: 200 })
+    );
+
+    await onMessage(
+      JSON.stringify({ action: "syncStoreCredit" }),
+      sendResponse,
+      vi.fn().mockResolvedValue("test-token"),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(502);
+  });
+
+  it("asks for no store credit without an RSI session", async () => {
+    const sendResponse = vi.fn();
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    await onMessage(
+      JSON.stringify({ action: "syncStoreCredit" }),
+      sendResponse,
+      vi.fn().mockResolvedValue(null),
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(401);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("responds to syncBuyback action without token", async () => {
