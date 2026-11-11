@@ -93,6 +93,21 @@ export function fetchStorePricing(token: string) {
   });
 }
 
+// The balances RSI's account panel shows, from the same GraphQL query: store
+// credit in USD cents.
+export function fetchStoreCredit(token: string) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/graphql`,
+    payload: {
+      operationName: "credit",
+      variables: {},
+      query:
+        "query credit { customer { ledgerCredit: ledger(ledgerCode: credit) { amount { value currency { code } } } } }",
+    },
+    rsiToken: token,
+  });
+}
+
 export function fetchCitizenPage(handle: string) {
   return fetch(`${RSI_BASE_URL}/en/citizens/${encodeURIComponent(handle)}`, {
     method: "GET",
