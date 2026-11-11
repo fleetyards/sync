@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/fleetyards/sync/compare/v1.5.0...v1.5.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **rsi:** quote the ledger code in the store credit query ([423d6ec](https://github.com/fleetyards/sync/commit/423d6ecb614e82cb26e7d9a09d4f29e2b52c0e09))
+
 ## [1.5.0](https://github.com/fleetyards/sync/compare/v1.4.0...v1.5.0) (2026-11-11)
 
 
