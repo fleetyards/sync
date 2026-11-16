@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
+  fetchUpgradePledges,
   fetchRSIApi,
   identify,
   fetchPledges,
@@ -92,6 +93,23 @@ describe("fetchPledges", () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://robertsspaceindustries.com/account/pledges?page=5",
       expect.anything()
+    );
+  });
+});
+
+describe("fetchUpgradePledges", () => {
+  it("fetches only the upgrade pledges", async () => {
+    const mockResponse = new Response("html", { status: 200 });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
+
+    await fetchUpgradePledges("test-token", 3);
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/pledges?page=3&product-type=upgrade",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({ "X-Rsi-Token": "test-token" }),
+      })
     );
   });
 });

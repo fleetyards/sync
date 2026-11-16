@@ -1,6 +1,7 @@
 import {
   identify,
   fetchPledges,
+  fetchUpgradePledges,
   fetchBuybacks,
   fetchBuybackDetail,
   setStoreAuthToken,
@@ -37,6 +38,7 @@ export const SUPPORTED_ACTIONS = [
   "health",
   "identify",
   "sync",
+  "syncUpgrades",
   "syncBuyback",
   "syncBuybackDetail",
   "syncBuybackPricing",
@@ -493,7 +495,11 @@ export async function onMessage(
 
       sendResponse(JSON.stringify({ action: message.action, ...result }));
     }
-  } else if (message?.action == "sync" || message?.action == "syncBuyback") {
+  } else if (
+    message?.action == "sync" ||
+    message?.action == "syncUpgrades" ||
+    message?.action == "syncBuyback"
+  ) {
     const token = await getToken();
     if (!token) {
       sendResponse(
@@ -505,7 +511,11 @@ export async function onMessage(
       );
     } else {
       const fetchPage =
-        message.action == "syncBuyback" ? fetchBuybacks : fetchPledges;
+        message.action == "syncBuyback"
+          ? fetchBuybacks
+          : message.action == "syncUpgrades"
+            ? fetchUpgradePledges
+            : fetchPledges;
       const response = await fetchPage(token, message.page);
       const payload = await response.text();
 
