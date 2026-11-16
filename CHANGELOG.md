@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/fleetyards/sync/compare/v1.5.1...v1.6.0) (2026-11-16)
+
+
+### Features
+
+* **rsi:** read only the upgrade pledges for a CCU sync ([#180](https://github.com/fleetyards/sync/issues/180)) ([29b7a12](https://github.com/fleetyards/sync/commit/29b7a1236ea9c2e117a4a9faf08405d4ca4398de))
+
+
+### Chores
+
+* **deps-dev:** bump vitest from 5.0.5 to 5.1.0 ([#178](https://github.com/fleetyards/sync/issues/178)) ([28e5c65](https://github.com/fleetyards/sync/commit/28e5c65899836898e75949f82df14bc7e8bdbedf))
+* **deps:** bump vue from 3.5.44 to 3.5.45 ([#179](https://github.com/fleetyards/sync/issues/179)) ([14bc537](https://github.com/fleetyards/sync/commit/14bc537a043e4a29a12c97929d40e3c572024949))
+
 ## [1.5.1](https://github.com/fleetyards/sync/compare/v1.5.0...v1.5.1) (2026-11-11)
 
 
