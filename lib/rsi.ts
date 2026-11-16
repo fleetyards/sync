@@ -37,8 +37,15 @@ const HTML_PAGE_HEADERS = {
   "Cache-Control": "max-age=0",
 };
 
-function fetchAccountPage(path: string, token: string, page: number) {
-  return fetch(`${RSI_BASE_URL}/account/${path}?page=${page}`, {
+function fetchAccountPage(
+  path: string,
+  token: string,
+  page: number,
+  filters: Record<string, string> = {}
+) {
+  const query = new URLSearchParams({ page: String(page), ...filters });
+
+  return fetch(`${RSI_BASE_URL}/account/${path}?${query}`, {
     method: "GET",
     headers: {
       ...HTML_PAGE_HEADERS,
@@ -50,6 +57,11 @@ function fetchAccountPage(path: string, token: string, page: number) {
 
 export function fetchPledges(token: string, page = 1) {
   return fetchAccountPage("pledges", token, page);
+}
+
+// Only the upgrades, which is all a CCU sync needs and a fraction of the pages.
+export function fetchUpgradePledges(token: string, page = 1) {
+  return fetchAccountPage("pledges", token, page, { "product-type": "upgrade" });
 }
 
 export function fetchBuybacks(token: string, page = 1) {

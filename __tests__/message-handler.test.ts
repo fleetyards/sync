@@ -27,6 +27,7 @@ describe("onMessage", () => {
           "health",
           "identify",
           "sync",
+          "syncUpgrades",
           "syncBuyback",
           "syncBuybackDetail",
           "syncBuybackPricing",
@@ -96,6 +97,34 @@ describe("onMessage", () => {
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://robertsspaceindustries.com/account/pledges?page=2",
+      expect.objectContaining({ method: "GET" })
+    );
+  });
+
+  it("responds to syncUpgrades action with the upgrade pledges", async () => {
+    const sendResponse = vi.fn();
+    const getToken = vi.fn().mockResolvedValue("test-token");
+
+    const mockResponse = {
+      status: 200,
+      text: vi.fn().mockResolvedValue("<html>upgrades</html>"),
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as any);
+
+    await onMessage(
+      JSON.stringify({ action: "syncUpgrades", page: 2 }),
+      sendResponse,
+      getToken,
+      "1.0.0"
+    );
+
+    const result = JSON.parse(sendResponse.mock.calls[0]![0]);
+    expect(result.code).toBe(200);
+    expect(result.action).toBe("syncUpgrades");
+    expect(result.payload).toBe("<html>upgrades</html>");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://robertsspaceindustries.com/account/pledges?page=2&product-type=upgrade",
       expect.objectContaining({ method: "GET" })
     );
   });
