@@ -32,6 +32,7 @@ describe("onMessage", () => {
           "syncBuybackDetail",
           "syncBuybackPricing",
           "syncStoreCredit",
+          "addToCart",
           "verify-write",
           "verify-remove",
           "org-verify-write",

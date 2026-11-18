@@ -23,6 +23,7 @@ import {
   tokenOnPage,
 } from "./org";
 import { appendToken, removeAppendedToken } from "./tokens";
+import { addToCart, parseCartItems } from "./cart";
 import {
   BioTooLongError,
   VERIFICATION_TOKEN_PATTERN,
@@ -43,6 +44,7 @@ export const SUPPORTED_ACTIONS = [
   "syncBuybackDetail",
   "syncBuybackPricing",
   "syncStoreCredit",
+  "addToCart",
   "verify-write",
   "verify-remove",
   "org-verify-write",
@@ -492,6 +494,31 @@ export async function onMessage(
 
         return { code: 500, error: "Store credit failed" };
       });
+
+      sendResponse(JSON.stringify({ action: message.action, ...result }));
+    }
+  } else if (message?.action == "addToCart") {
+    const items = parseCartItems(message.items);
+    const token = await getToken();
+
+    if (!items) {
+      sendResponse(
+        JSON.stringify({ code: 400, action: message.action, error: "Invalid cart items" })
+      );
+    } else if (!token) {
+      sendResponse(
+        JSON.stringify({ code: 401, action: message.action, error: "No RSI session" })
+      );
+    } else {
+      // One cart per account: a second request must not interleave its
+      // upgrade context with the first one's.
+      const result = await oneAtATime("cart", () => addToCart(token, items)).catch(
+        (error) => {
+          console.error("FY Sync: Add to cart failed", error);
+
+          return { code: 500, error: "Add to cart failed" };
+        }
+      );
 
       sendResponse(JSON.stringify({ action: message.action, ...result }));
     }
