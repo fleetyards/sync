@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/fleetyards/sync/compare/v1.6.0...v1.7.0) (2026-11-19)
+
+
+### Features
+
+* **rsi:** add store SKUs, upgrades and buy-backs to the RSI cart ([#182](https://github.com/fleetyards/sync/issues/182)) ([779f4fe](https://github.com/fleetyards/sync/commit/779f4fecd7f85eb83e4f8ec06f8fbb948ed88a63))
+
 ## [1.6.0](https://github.com/fleetyards/sync/compare/v1.5.1...v1.6.0) (2026-11-16)
 
 
