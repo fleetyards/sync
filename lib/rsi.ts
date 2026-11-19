@@ -187,3 +187,103 @@ export function publishOrgDraft(token: string, sid: string) {
     headers: ORG_ADMIN_HEADERS,
   });
 }
+
+// Any store page carries the CSRF token RSI's cart mutations ask for, in a
+// meta tag of the HTML the server sends.
+export function fetchCartPage(token: string) {
+  return fetch(`${RSI_BASE_URL}/en/store/pledge/cart`, {
+    method: "GET",
+    headers: {
+      ...HTML_PAGE_HEADERS,
+      "X-Rsi-Token": token,
+    },
+    credentials: "include",
+    cache: "no-store",
+  });
+}
+
+const csrfHeaders = (csrfToken: string) => ({ "X-CSRF-TOKEN": csrfToken });
+
+export function addSkusToCart(
+  token: string,
+  csrfToken: string,
+  items: { skuId: number; qty: number }[]
+) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/graphql`,
+    payload: [
+      {
+        operationName: "AddCartMultiItemMutation",
+        variables: {
+          storeFront: "pledge",
+          query: items.map(({ skuId, qty }) => ({ skuId: String(skuId), qty })),
+        },
+        query:
+          'mutation AddCartMultiItemMutation($query: [CartAddInput!], $storeFront: String = "pledge") { store(name: $storeFront) { cart { mutations { addMany(query: $query) { count } } } } }',
+      },
+    ],
+    rsiToken: token,
+    headers: csrfHeaders(csrfToken),
+  });
+}
+
+// The upgrade tool reads what it adds from this context: a pledge id makes the
+// upgrade a buy-back, none a store purchase.
+export function setUpgradeContext(
+  token: string,
+  csrfToken: string,
+  context: {
+    fromShipId: number;
+    toShipId: number;
+    toSkuId: number;
+    pledgeId: number | null;
+  }
+) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/api/ship-upgrades/setContextToken`,
+    payload: context,
+    rsiToken: token,
+    headers: csrfHeaders(csrfToken),
+  });
+}
+
+// Answers with a JWT the cart takes for 30 seconds.
+export function createUpgradeCartToken(
+  token: string,
+  csrfToken: string,
+  from: number,
+  to: number
+) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/pledge-store/api/upgrade/v2/graphql`,
+    payload: [
+      {
+        operationName: "addToCart",
+        variables: { from, to },
+        query:
+          "mutation addToCart($from: Int!, $to: Int!) { addToCart(from: $from, to: $to) { jwt } }",
+      },
+    ],
+    rsiToken: token,
+    headers: csrfHeaders(csrfToken),
+  });
+}
+
+export function redeemCartToken(token: string, csrfToken: string, jwt: string) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/api/store/v2/cart/token`,
+    payload: { jwt },
+    rsiToken: token,
+    headers: csrfHeaders(csrfToken),
+  });
+}
+
+// Replaces whatever the cart held: a buy-back is only ever bought alone.
+export function buyBackPledge(token: string, csrfToken: string, id: number) {
+  return fetchRSIApi({
+    url: `${RSI_BASE_URL}/api/store/buyBackPledge`,
+    payload: { id },
+    rsiToken: token,
+    headers: csrfHeaders(csrfToken),
+  });
+}
