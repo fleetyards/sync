@@ -18,7 +18,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "vue": "^3.5.45"
+    "vue": "^3.5.46"
   },
   "devDependencies": {
     "@wxt-dev/module-vue": "^1.0.2",
